@@ -578,45 +578,31 @@ function buildFallbackEmbedding(text) {
 function buildProjectionAxes(dimensions) {
   const axisX = new Float32Array(dimensions);
   const axisY = new Float32Array(dimensions);
-  const axisZ = new Float32Array(dimensions);
 
   for (let index = 0; index < dimensions; index += 1) {
     axisX[index] = Math.sin(index * 1.71 + 0.37);
     axisY[index] = Math.cos(index * 2.19 + 1.11);
-    axisZ[index] = Math.sin(index * 1.13 + 0.63) * Math.cos(index * 0.83 + 0.27);
   }
 
   return {
     axisX: normalizeVector(axisX),
     axisY: normalizeVector(axisY),
-    axisZ: normalizeVector(axisZ),
   };
 }
 
-function projectVector3D(vector) {
-  if (
-    !state.projectionAxes ||
-    !state.projectionAxes.axisZ ||
-    state.projectionAxes.axisX.length !== vector.length
-  ) {
+function projectVector(vector) {
+  if (!state.projectionAxes || state.projectionAxes.axisX.length !== vector.length) {
     state.projectionAxes = buildProjectionAxes(vector.length);
   }
 
-  const { axisX, axisY, axisZ } = state.projectionAxes;
+  const { axisX, axisY } = state.projectionAxes;
   let x = 0;
   let y = 0;
-  let z = 0;
   for (let index = 0; index < vector.length; index += 1) {
     x += vector[index] * axisX[index];
     y += vector[index] * axisY[index];
-    z += vector[index] * axisZ[index];
   }
-  return { x, y, z };
-}
-
-function projectVector(vector) {
-  const projection = projectVector3D(vector);
-  return { x: projection.x, y: projection.y };
+  return { x, y };
 }
 
 function getTeachingProjectionAxes(dimensions) {
@@ -626,22 +612,15 @@ function getTeachingProjectionAxes(dimensions) {
   return teachingProjectionAxesCache.get(dimensions);
 }
 
-function projectTeachingVector3D(vector) {
-  const { axisX, axisY, axisZ } = getTeachingProjectionAxes(vector.length);
+function projectTeachingVector(vector) {
+  const { axisX, axisY } = getTeachingProjectionAxes(vector.length);
   let x = 0;
   let y = 0;
-  let z = 0;
   for (let index = 0; index < vector.length; index += 1) {
     x += vector[index] * axisX[index];
     y += vector[index] * axisY[index];
-    z += vector[index] * axisZ[index];
   }
-  return { x, y, z };
-}
-
-function projectTeachingVector(vector) {
-  const projection = projectTeachingVector3D(vector);
-  return { x: projection.x, y: projection.y };
+  return { x, y };
 }
 
 function tokenizeForEmbeddingDisplay(text) {
@@ -1543,7 +1522,7 @@ function buildTokenScatterSvg(points, options = {}) {
       ${laidOutPoints
         .filter((point) => !point.isCenter)
         .map((point) => {
-          const radius = 8 + clamp((point.importance || 0.7) * 4, 0, 5);
+          const radius = 10 + clamp((point.importance || 0.7) * 5, 0, 6);
           const hoverTitle = options.titleBuilder ? options.titleBuilder(point) : point.token;
           const attentionLinks =
             options.showAttentionLinks && point.influences
@@ -1591,7 +1570,7 @@ function buildTokenScatterSvg(points, options = {}) {
               <circle
                 cx="${centerPoint.plotX}"
                 cy="${centerPoint.plotY}"
-                r="18"
+                r="20"
                 class="embedding-center-point"
               ></circle>
               <text x="${centerPoint.plotX}" y="${centerPoint.plotY + 5}" class="embedding-center-label">P</text>
@@ -1662,7 +1641,7 @@ function buildSemanticSpaceSvg(selectedParagraph, teachingData) {
             : point.isNeighbor
               ? "var(--cyan)"
               : `${getDocColor(point.docIndex)}cc`;
-          const radius = point.isSelected ? 14 : point.isNeighbor ? 10 : 7;
+          const radius = point.isSelected ? 17 : point.isNeighbor ? 12 : 9;
           return `
             <g>
               <circle
@@ -1680,411 +1659,6 @@ function buildSemanticSpaceSvg(selectedParagraph, teachingData) {
         .join("")}
     </svg>
   `;
-}
-
-function buildAttentionSegments3D(nodes, nodeIndex) {
-  const source = nodes[nodeIndex];
-  if (!source?.projection3d || !source.influences?.length) {
-    return { x: [], y: [], z: [] };
-  }
-
-  const segments = { x: [], y: [], z: [] };
-  for (const influence of source.influences) {
-    const target = nodes[influence.index];
-    if (!target?.projection3d) {
-      continue;
-    }
-    segments.x.push(source.projection3d.x, target.projection3d.x, null);
-    segments.y.push(source.projection3d.y, target.projection3d.y, null);
-    segments.z.push(source.projection3d.z, target.projection3d.z, null);
-  }
-
-  return segments;
-}
-
-function buildPoolingSegments3D(points, centerPoint) {
-  const segments = { x: [], y: [], z: [] };
-  for (const point of points) {
-    segments.x.push(point.projection3d.x, centerPoint.x, null);
-    segments.y.push(point.projection3d.y, centerPoint.y, null);
-    segments.z.push(point.projection3d.z, centerPoint.z, null);
-  }
-  return segments;
-}
-
-async function renderEmbeddingStagePlot3D(detail, selectedParagraph, teachingData) {
-  const host = elements.embeddingStageDisplay?.querySelector(".plotly-chart-host");
-  const noteElement = elements.embeddingStageDisplay?.querySelector(".plotly-chart-note");
-  if (!host || !noteElement) {
-    return;
-  }
-
-  switch (detail.key) {
-    case "tokenization": {
-      const tokenPoints = teachingData.tokenPoints.map((point) => ({
-        ...point,
-        projection3d: projectTeachingVector3D(point.vector),
-      }));
-
-      await renderPlotlyChart(
-        host,
-        [
-          {
-            type: "scatter3d",
-            mode: "markers+text",
-            x: tokenPoints.map((point) => point.projection3d.x),
-            y: tokenPoints.map((point) => point.projection3d.y),
-            z: tokenPoints.map((point) => point.projection3d.z),
-            text: tokenPoints.map((point) => String(point.index + 1)),
-            textposition: "middle center",
-            customdata: tokenPoints.map((point) => [point.token]),
-            hovertemplate: "<b>Token %{text}</b><br>%{customdata[0]}<extra></extra>",
-            marker: {
-              size: tokenPoints.map((point) => 8 + clamp(teachingData.tokenImportance[point.index] * 4, 0, 5)),
-              color: tokenPoints.map(() => "rgba(26, 53, 168, 0.92)"),
-              line: {
-                color: "rgba(255,255,255,0.92)",
-                width: 2.5,
-              },
-            },
-            textfont: {
-              color: "rgba(255,255,255,0.96)",
-              size: 10,
-              family: "IBM Plex Sans, sans-serif",
-            },
-          },
-        ],
-        build3DSceneLayout(tokenPoints.map((point) => point.projection3d)),
-        noteElement,
-        "Drag to rotate the token cloud. Hover a token for its label and tap it to pin the selection.",
-        (_Plotly, plotHost, note, defaultNote) => {
-          plotHost.on("plotly_click", (event) => {
-            const clickedPoint = event.points?.[0];
-            if (!clickedPoint) {
-              return;
-            }
-            const token = clickedPoint.customdata?.[0];
-            note.textContent = `Selected token ${clickedPoint.text}: ${token}.`;
-          });
-
-          plotHost.on("plotly_doubleclick", () => {
-            note.textContent = defaultNote;
-          });
-        },
-      );
-      break;
-    }
-    case "transformer": {
-      const nodes = teachingData.attentionNodes.map((node) => ({
-        ...node,
-        projection3d: projectTeachingVector3D(node.transformedVector),
-      }));
-
-      await renderPlotlyChart(
-        host,
-        [
-          {
-            type: "scatter3d",
-            mode: "markers+text",
-            x: nodes.map((node) => node.projection3d.x),
-            y: nodes.map((node) => node.projection3d.y),
-            z: nodes.map((node) => node.projection3d.z),
-            text: nodes.map((node) => String(node.index + 1)),
-            textposition: "middle center",
-            customdata: nodes.map((node) => [
-              node.token,
-              node.influences.map((influence) => `${influence.token} (${cosineToPercentage(influence.score)}%)`).join(", "),
-            ]),
-            hovertemplate:
-              "<b>Token %{text}</b><br>%{customdata[0]}<br>Strongest attention: %{customdata[1]}<extra></extra>",
-            marker: {
-              size: nodes.map((node) => 8 + clamp(teachingData.tokenImportance[node.index] * 4, 0, 5)),
-              color: nodes.map(() => "rgba(79, 185, 209, 0.96)"),
-              line: {
-                color: "rgba(255,255,255,0.92)",
-                width: 2.5,
-              },
-            },
-            textfont: {
-              color: "rgba(255,255,255,0.96)",
-              size: 10,
-              family: "IBM Plex Sans, sans-serif",
-            },
-          },
-          {
-            type: "scatter3d",
-            mode: "lines",
-            x: [],
-            y: [],
-            z: [],
-            hoverinfo: "skip",
-            line: {
-              color: "rgba(23, 92, 230, 0.58)",
-              width: 6,
-            },
-          },
-        ],
-        build3DSceneLayout(nodes.map((node) => node.projection3d)),
-        noteElement,
-        "Drag to rotate the attention space. Hover a token to reveal its strongest attention links; tap to pin them.",
-        (Plotly, plotHost, note, defaultNote) => {
-          let pinnedIndex = null;
-
-          const applySelection = (nodeIndex) => {
-            const node = nodes[nodeIndex];
-            if (!node) {
-              return;
-            }
-            const segments = buildAttentionSegments3D(nodes, nodeIndex);
-            void Plotly.restyle(
-              plotHost,
-              {
-                x: [segments.x],
-                y: [segments.y],
-                z: [segments.z],
-              },
-              [1],
-            );
-            note.textContent = `Token ${node.index + 1}: ${node.token}. Strongest attention comes from ${node.influences
-              .map((influence) => `${influence.token} (${cosineToPercentage(influence.score)}%)`)
-              .join(", ")}.`;
-          };
-
-          const clearSelection = () => {
-            void Plotly.restyle(plotHost, { x: [[]], y: [[]], z: [[]] }, [1]);
-            note.textContent = defaultNote;
-          };
-
-          plotHost.on("plotly_hover", (event) => {
-            const hoveredPoint = event.points?.[0];
-            if (!hoveredPoint || hoveredPoint.curveNumber !== 0) {
-              return;
-            }
-            applySelection(hoveredPoint.pointNumber);
-          });
-
-          plotHost.on("plotly_unhover", () => {
-            if (pinnedIndex !== null) {
-              applySelection(pinnedIndex);
-            } else {
-              clearSelection();
-            }
-          });
-
-          plotHost.on("plotly_click", (event) => {
-            const clickedPoint = event.points?.[0];
-            if (!clickedPoint || clickedPoint.curveNumber !== 0) {
-              return;
-            }
-            pinnedIndex = clickedPoint.pointNumber;
-            applySelection(pinnedIndex);
-          });
-
-          plotHost.on("plotly_doubleclick", () => {
-            pinnedIndex = null;
-            clearSelection();
-          });
-        },
-      );
-      break;
-    }
-    case "pooling": {
-      const tokenPoints = teachingData.attentionNodes.map((node) => ({
-        ...node,
-        projection3d: projectTeachingVector3D(node.transformedVector),
-      }));
-      const centerPoint = projectTeachingVector3D(teachingData.pooledVector);
-      const segments = buildPoolingSegments3D(tokenPoints, centerPoint);
-
-      await renderPlotlyChart(
-        host,
-        [
-          {
-            type: "scatter3d",
-            mode: "lines",
-            x: segments.x,
-            y: segments.y,
-            z: segments.z,
-            hoverinfo: "skip",
-            line: {
-              color: "rgba(79, 185, 209, 0.32)",
-              width: 4,
-            },
-          },
-          {
-            type: "scatter3d",
-            mode: "markers+text",
-            x: tokenPoints.map((point) => point.projection3d.x),
-            y: tokenPoints.map((point) => point.projection3d.y),
-            z: tokenPoints.map((point) => point.projection3d.z),
-            text: tokenPoints.map((point) => String(point.index + 1)),
-            textposition: "middle center",
-            customdata: tokenPoints.map((point) => [point.token]),
-            hovertemplate: "<b>Token %{text}</b><br>%{customdata[0]}<extra></extra>",
-            marker: {
-              size: tokenPoints.map((point) => 8 + clamp(teachingData.tokenImportance[point.index] * 4, 0, 5)),
-              color: tokenPoints.map(() => "rgba(26, 53, 168, 0.92)"),
-              line: {
-                color: "rgba(255,255,255,0.92)",
-                width: 2.5,
-              },
-            },
-            textfont: {
-              color: "rgba(255,255,255,0.96)",
-              size: 10,
-              family: "IBM Plex Sans, sans-serif",
-            },
-          },
-          {
-            type: "scatter3d",
-            mode: "markers+text",
-            x: [centerPoint.x],
-            y: [centerPoint.y],
-            z: [centerPoint.z],
-            text: ["P"],
-            textposition: "middle center",
-            customdata: [["Pooled paragraph vector"]],
-            hovertemplate: "<b>%{customdata[0]}</b><extra></extra>",
-            marker: {
-              size: 18,
-              color: "rgba(255, 90, 10, 0.98)",
-              line: {
-                color: "rgba(255,255,255,0.96)",
-                width: 3.5,
-              },
-            },
-            textfont: {
-              color: "rgba(255,255,255,0.96)",
-              size: 12,
-              family: "IBM Plex Sans, sans-serif",
-            },
-          },
-        ],
-        build3DSceneLayout(tokenPoints.map((point) => point.projection3d).concat([centerPoint])),
-        noteElement,
-        "Drag to rotate the pooling view. Tap a token or the pooled point to pin its role.",
-        (_Plotly, plotHost, note, defaultNote) => {
-          plotHost.on("plotly_click", (event) => {
-            const clickedPoint = event.points?.[0];
-            if (!clickedPoint) {
-              return;
-            }
-            if (clickedPoint.curveNumber === 2) {
-              note.textContent = "P is the pooled paragraph vector created by aggregating the token-level information.";
-              return;
-            }
-            const token = clickedPoint.customdata?.[0];
-            note.textContent = `Token ${clickedPoint.text}: ${token} contributes to the pooled paragraph vector through aggregation.`;
-          });
-
-          plotHost.on("plotly_doubleclick", () => {
-            note.textContent = defaultNote;
-          });
-        },
-      );
-      break;
-    }
-    case "semantic-space": {
-      const neighborIds = new Set(teachingData.semanticNeighbors.map((neighbor) => neighbor.id));
-      const allParagraphs = state.paragraphs
-        .filter((paragraph) => hasEmbeddingVector(paragraph.embedding))
-        .map((paragraph) => ({
-          ...paragraph,
-          projection3d: projectVector3D(paragraph.embedding),
-          isSelected: paragraph.id === selectedParagraph.id,
-          isNeighbor: neighborIds.has(paragraph.id),
-        }));
-
-      const basePoints = allParagraphs.filter((point) => !point.isSelected && !point.isNeighbor);
-      const neighborPoints = allParagraphs.filter((point) => point.isNeighbor);
-      const selectedPoint = allParagraphs.find((point) => point.isSelected);
-
-      await renderPlotlyChart(
-        host,
-        [
-          {
-            type: "scatter3d",
-            mode: "markers",
-            x: basePoints.map((point) => point.projection3d.x),
-            y: basePoints.map((point) => point.projection3d.y),
-            z: basePoints.map((point) => point.projection3d.z),
-            customdata: basePoints.map((point) => [point.docName, point.indexInDoc + 1, point.charCount]),
-            hovertemplate: "<b>%{customdata[0]}</b><br>Chunk %{customdata[1]}<br>%{customdata[2]} chars<extra></extra>",
-            marker: {
-              size: 5,
-              color: basePoints.map((point) => getDocColor(point.docIndex)),
-              opacity: 0.3,
-              line: {
-                color: "rgba(255,255,255,0.84)",
-                width: 1.4,
-              },
-            },
-          },
-          {
-            type: "scatter3d",
-            mode: "markers",
-            x: neighborPoints.map((point) => point.projection3d.x),
-            y: neighborPoints.map((point) => point.projection3d.y),
-            z: neighborPoints.map((point) => point.projection3d.z),
-            customdata: neighborPoints.map((point) => [point.docName, point.indexInDoc + 1, point.charCount]),
-            hovertemplate: "<b>%{customdata[0]}</b><br>Neighbor chunk %{customdata[1]}<br>%{customdata[2]} chars<extra></extra>",
-            marker: {
-              size: 8,
-              color: "rgba(79, 185, 209, 0.96)",
-              line: {
-                color: "rgba(255,255,255,0.88)",
-                width: 2.2,
-              },
-            },
-          },
-          {
-            type: "scatter3d",
-            mode: "markers+text",
-            x: selectedPoint ? [selectedPoint.projection3d.x] : [],
-            y: selectedPoint ? [selectedPoint.projection3d.y] : [],
-            z: selectedPoint ? [selectedPoint.projection3d.z] : [],
-            text: selectedPoint ? ["Selected"] : [],
-            textposition: "top center",
-            customdata: selectedPoint ? [[selectedPoint.docName, selectedPoint.indexInDoc + 1, selectedPoint.charCount]] : [],
-            hovertemplate: "<b>%{customdata[0]}</b><br>Selected chunk %{customdata[1]}<br>%{customdata[2]} chars<extra></extra>",
-            marker: {
-              size: 12,
-              color: "rgba(255, 90, 10, 0.98)",
-              line: {
-                color: "rgba(255,255,255,0.94)",
-                width: 3,
-              },
-            },
-            textfont: {
-              color: "#152a7e",
-              size: 12,
-              family: "IBM Plex Sans, sans-serif",
-            },
-          },
-        ],
-        build3DSceneLayout(allParagraphs.map((point) => point.projection3d)),
-        noteElement,
-        "Drag to rotate the semantic space. Tap a paragraph to pin its position in the final retrieval space.",
-        (_Plotly, plotHost, note, defaultNote) => {
-          plotHost.on("plotly_click", (event) => {
-            const clickedPoint = event.points?.[0];
-            if (!clickedPoint?.customdata) {
-              return;
-            }
-            const [docName, chunkIndex, charCount] = clickedPoint.customdata;
-            note.textContent = `${docName} - Chunk ${chunkIndex} - ${charCount} chars in the final retrieval space.`;
-          });
-
-          plotHost.on("plotly_doubleclick", () => {
-            note.textContent = defaultNote;
-          });
-        },
-      );
-      break;
-    }
-    default:
-      break;
-  }
 }
 
 function renderEmbeddingStageDisplay(selectedParagraph, detail, teachingData) {
@@ -2131,8 +1705,16 @@ function renderEmbeddingStageDisplay(selectedParagraph, detail, teachingData) {
 
   switch (detail.key) {
     case "tokenization":
-      visualHtml = buildPlotlyChartMarkup(
-        "Drag to rotate the token cloud. Hover a token for its label and tap it to pin the selection.",
+      visualHtml = buildTokenScatterSvg(
+        teachingData.tokenPoints.map((point) => ({
+          ...point,
+          importance: teachingData.tokenImportance[point.index],
+        })),
+        {
+          ariaLabel: "Tokenization projection",
+          pointColor: "var(--blue)",
+          titleBuilder: (point) => `Token ${point.index + 1}: ${point.token}`,
+        },
       );
       asideHtml = `
         <div class="embedding-stage-note">
@@ -2146,8 +1728,21 @@ function renderEmbeddingStageDisplay(selectedParagraph, detail, teachingData) {
       `;
       break;
     case "transformer":
-      visualHtml = buildPlotlyChartMarkup(
-        "Drag to rotate the attention space. Hover a token to reveal its strongest attention links; tap to pin them.",
+      visualHtml = buildTokenScatterSvg(
+        teachingData.attentionNodes.map((node) => ({
+          ...node,
+          importance: teachingData.tokenImportance[node.index],
+        })),
+        {
+          projectionKey: "transformedProjection",
+          ariaLabel: "Self-attention projection",
+          pointColor: "var(--cyan)",
+          showAttentionLinks: true,
+          titleBuilder: (node) =>
+            `Token ${node.index + 1}: ${node.token}\nStrongest attention: ${node.influences
+              .map((influence) => `${influence.token} (${cosineToPercentage(influence.score)}%)`)
+              .join(", ")}`,
+        },
       );
       asideHtml = `
         <div class="embedding-stage-note">
@@ -2165,8 +1760,22 @@ function renderEmbeddingStageDisplay(selectedParagraph, detail, teachingData) {
       `;
       break;
     case "pooling":
-      visualHtml = buildPlotlyChartMarkup(
-        "Drag to rotate the pooling view. Tap a token or the pooled point to pin its role.",
+      visualHtml = buildTokenScatterSvg(
+        teachingData.attentionNodes.map((node) => ({
+          ...node,
+          importance: teachingData.tokenImportance[node.index],
+        })),
+        {
+          projectionKey: "transformedProjection",
+          ariaLabel: "Pooling view",
+          pointColor: "var(--blue)",
+          centerPoint: {
+            projection: teachingData.pooledProjection,
+            label: "Pooled vector",
+          },
+          showPoolingLinks: true,
+          titleBuilder: (node) => `Token ${node.index + 1}: ${node.token}`,
+        },
       );
       asideHtml = `
         <div class="embedding-stage-note">
@@ -2232,9 +1841,7 @@ function renderEmbeddingStageDisplay(selectedParagraph, detail, teachingData) {
       `;
       break;
     case "semantic-space":
-      visualHtml = buildPlotlyChartMarkup(
-        "Drag to rotate the semantic space. Tap a paragraph to pin its position in the final retrieval space.",
-      );
+      visualHtml = buildSemanticSpaceSvg(selectedParagraph, teachingData);
       asideHtml = `
         <div class="embedding-stage-note">
           <p class="card-kicker">Stage focus</p>
@@ -2282,10 +1889,6 @@ function renderEmbeddingStageDisplay(selectedParagraph, detail, teachingData) {
       </div>
     </div>
   `;
-
-  if (["tokenization", "transformer", "pooling", "semantic-space"].includes(detail.key)) {
-    void renderEmbeddingStagePlot3D(detail, selectedParagraph, teachingData);
-  }
 }
 
 function renderEmbeddingExplorer() {
@@ -2394,7 +1997,7 @@ function renderSemanticMap() {
     .filter((paragraph) => hasEmbeddingVector(paragraph.embedding))
     .map((paragraph) => ({
       ...paragraph,
-      projection3d: projectVector3D(paragraph.embedding),
+      projection: projectVector(paragraph.embedding),
     }));
 
   if (!points.length) {
@@ -2407,121 +2010,44 @@ function renderSemanticMap() {
     points.push({
       id: "query-point",
       docIndex: -1,
-      projection3d: projectVector3D(state.retrieval.queryEmbedding),
+      projection: projectVector(state.retrieval.queryEmbedding),
       isQuery: true,
       label: "Query",
       isRetrieved: true,
     });
   }
 
-  elements.semanticMap.innerHTML = buildPlotlyChartMarkup(
-    "Drag to rotate the semantic space. Tap a point to pin its paragraph details.",
-  );
-  const host = elements.semanticMap.querySelector(".plotly-chart-host");
-  const note = elements.semanticMap.querySelector(".plotly-chart-note");
-  void renderSemanticMap3D(host, note, points);
-}
+  const xs = points.map((point) => point.projection.x);
+  const ys = points.map((point) => point.projection.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
 
-async function renderSemanticMap3D(host, noteElement, points) {
-  const paragraphPoints = points.filter((point) => !point.isQuery);
-  const indexedPoints = paragraphPoints.filter((point) => !point.isRetrieved);
-  const retrievedPoints = paragraphPoints.filter((point) => point.isRetrieved);
-  const queryPoint = points.find((point) => point.isQuery);
-  const scenePoints = points.map((point) => point.projection3d);
-
-  const traces = [
-    {
-      type: "scatter3d",
-      mode: "markers",
-      x: indexedPoints.map((point) => point.projection3d.x),
-      y: indexedPoints.map((point) => point.projection3d.y),
-      z: indexedPoints.map((point) => point.projection3d.z),
-      customdata: indexedPoints.map((point) => [point.docName, point.indexInDoc + 1, point.charCount, "Indexed paragraph"]),
-      hovertemplate:
-        "<b>%{customdata[0]}</b><br>Chunk %{customdata[1]}<br>%{customdata[3]}<br>%{customdata[2]} chars<extra></extra>",
-      marker: {
-        size: 5,
-        color: indexedPoints.map((point) => getDocColor(point.docIndex)),
-        opacity: 0.34,
-        line: {
-          color: "rgba(255,255,255,0.82)",
-          width: 1.5,
-        },
-      },
-    },
-    {
-      type: "scatter3d",
-      mode: "markers",
-      x: retrievedPoints.map((point) => point.projection3d.x),
-      y: retrievedPoints.map((point) => point.projection3d.y),
-      z: retrievedPoints.map((point) => point.projection3d.z),
-      customdata: retrievedPoints.map((point) => [point.docName, point.indexInDoc + 1, point.charCount, "Retrieved match"]),
-      hovertemplate:
-        "<b>%{customdata[0]}</b><br>Chunk %{customdata[1]}<br>%{customdata[3]}<br>%{customdata[2]} chars<extra></extra>",
-      marker: {
-        size: 8,
-        color: retrievedPoints.map((point) => getDocColor(point.docIndex)),
-        opacity: 0.96,
-        line: {
-          color: "rgba(255,255,255,0.86)",
-          width: 2,
-        },
-      },
-    },
-  ];
-  if (queryPoint) {
-    traces.push({
-      type: "scatter3d",
-      mode: "markers+text",
-      x: [queryPoint.projection3d.x],
-      y: [queryPoint.projection3d.y],
-      z: [queryPoint.projection3d.z],
-      text: ["Query"],
-      textposition: "top center",
-      customdata: [[state.retrieval?.query || "Query"]],
-      hovertemplate: "<b>Query</b><br>%{customdata[0]}<extra></extra>",
-      marker: {
-        size: 11,
-        color: "rgba(255, 90, 10, 0.98)",
-        line: {
-          color: "rgba(255,255,255,0.94)",
-          width: 3,
-        },
-      },
-      textfont: {
-        color: "#152a7e",
-        size: 12,
-        family: "IBM Plex Sans, sans-serif",
-      },
-    });
-  }
-
-  await renderPlotlyChart(
-    host,
-    traces,
-    build3DSceneLayout(scenePoints),
-    noteElement,
-    "Drag to rotate the semantic space. Tap a point to pin its paragraph details.",
-    (_Plotly, plotHost, note, defaultNote) => {
-      plotHost.on("plotly_click", (event) => {
-        const clickedPoint = event.points?.[0];
-        if (!clickedPoint) {
-          return;
-        }
-        if (clickedPoint.data.text?.[0] === "Query") {
-          note.textContent = `Query: ${state.retrieval?.query || "No query yet"}`;
-          return;
-        }
-
-        const [docName, chunkIndex, charCount, status] = clickedPoint.customdata;
-        note.textContent = `${docName} - Chunk ${chunkIndex} - ${charCount} chars - ${status}.`;
-      });
-
-      plotHost.on("plotly_doubleclick", () => {
-        note.textContent = defaultNote;
-      });
-    },
-  );
+  elements.semanticMap.innerHTML = points
+    .map((point) => {
+      const left = 8 + ((point.projection.x - minX) / Math.max(maxX - minX, 1e-6)) * 84;
+      const top = 8 + ((point.projection.y - minY) / Math.max(maxY - minY, 1e-6)) * 84;
+      const isRetrieved = point.isRetrieved;
+      const color = point.isQuery ? undefined : getDocColor(point.docIndex);
+      const glow = isRetrieved ? "0 0 0 8px rgba(79, 185, 209, 0.18)" : "0 0 0 0 rgba(23, 37, 90, 0.08)";
+      return `
+        <div
+          class="map-point ${point.isQuery ? "is-query" : ""}"
+          style="
+            left:${left}%;
+            top:${top}%;
+            background:${point.isQuery ? "" : color};
+            box-shadow:${glow};
+            opacity:${isRetrieved || point.isQuery ? 1 : 0.78};
+          "
+          title="${escapeHtml(point.isQuery ? state.retrieval.query : point.docName)}"
+        >
+          ${point.isQuery ? `<span class="map-point-label">Query</span>` : ""}
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function renderRankingList() {
@@ -2558,237 +2084,116 @@ function buildRetrievalChartMarkup() {
     return `<div class="empty-message">Run a query to draw the retrieval map.</div>`;
   }
 
-  return buildPlotlyChartMarkup(
-    "Drag to rotate the retrieval space. Hover a highlighted chunk to reveal its cosine relation; tap to pin it.",
-  );
-}
-
-async function renderRetrievalChart3D(host, noteElement) {
-  const queryPoint = projectVector3D(state.retrieval.queryEmbedding);
-  const originPoint = { x: 0, y: 0, z: 0 };
   const retrievedIds = new Set(state.retrieval.topResults.map((result) => result.id));
-
-  const basePoints = state.paragraphs
-    .filter((paragraph) => hasEmbeddingVector(paragraph.embedding) && !retrievedIds.has(paragraph.id))
+  const points = state.paragraphs
+    .filter((paragraph) => hasEmbeddingVector(paragraph.embedding))
     .map((paragraph) => ({
       ...paragraph,
-      projection3d: projectVector3D(paragraph.embedding),
+      projection: projectVector(paragraph.embedding),
+      isRetrieved: retrievedIds.has(paragraph.id),
+      isQuery: false,
+      isOrigin: false,
     }));
 
-  const topPoints = state.retrieval.topResults.map((result) => ({
-    ...result,
-    projection3d: projectVector3D(result.embedding),
-  }));
+  points.push({
+    id: "retrieval-query-point",
+    projection: projectVector(state.retrieval.queryEmbedding),
+    isQuery: true,
+    isOrigin: false,
+  });
+  points.push({
+    id: "retrieval-origin-point",
+    projection: { x: 0, y: 0 },
+    isQuery: false,
+    isOrigin: true,
+  });
 
-  const scenePoints = basePoints
-    .map((point) => point.projection3d)
-    .concat(topPoints.map((point) => point.projection3d), [queryPoint, originPoint]);
+  const width = 860;
+  const height = 520;
+  const laidOutPoints = layoutScatterPoints(points, width, height);
+  const queryPoint = laidOutPoints.find((point) => point.isQuery);
+  const originPoint = laidOutPoints.find((point) => point.isOrigin);
+  if (!queryPoint || !originPoint) {
+    return `<div class="empty-message">Run a query to draw the retrieval map.</div>`;
+  }
+  const paragraphPoints = laidOutPoints.filter((point) => !point.isQuery && !point.isOrigin);
+  const retrievedPoints = paragraphPoints.filter((point) => point.isRetrieved);
 
-  await renderPlotlyChart(
-    host,
-    [
-      {
-        type: "scatter3d",
-        mode: "markers",
-        x: basePoints.map((point) => point.projection3d.x),
-        y: basePoints.map((point) => point.projection3d.y),
-        z: basePoints.map((point) => point.projection3d.z),
-        customdata: basePoints.map((point) => [point.docName, point.indexInDoc + 1, point.charCount]),
-        hovertemplate: "<b>%{customdata[0]}</b><br>Chunk %{customdata[1]}<br>%{customdata[2]} chars<extra></extra>",
-        marker: {
-          size: 5,
-          color: basePoints.map((point) => getDocColor(point.docIndex)),
-          opacity: 0.24,
-          line: {
-            color: "rgba(255,255,255,0.84)",
-            width: 1.2,
-          },
-        },
-      },
-      {
-        type: "scatter3d",
-        mode: "markers+text",
-        x: topPoints.map((point) => point.projection3d.x),
-        y: topPoints.map((point) => point.projection3d.y),
-        z: topPoints.map((point) => point.projection3d.z),
-        text: topPoints.map((_, index) => String(index + 1)),
-        textposition: "middle center",
-        customdata: topPoints.map((point) => [
-          point.docName,
-          point.indexInDoc + 1,
-          point.charCount,
-          Math.round(point.score * 100),
-        ]),
-        hovertemplate:
-          "<b>%{customdata[0]}</b><br>Rank %{text}<br>Chunk %{customdata[1]}<br>Cosine %{customdata[3]}%<br>%{customdata[2]} chars<extra></extra>",
-        marker: {
-          size: 11,
-          color: topPoints.map((point) => getDocColor(point.docIndex)),
-          opacity: 0.98,
-          line: {
-            color: "rgba(255,255,255,0.92)",
-            width: 2.8,
-          },
-        },
-        textfont: {
-          color: "rgba(255,255,255,0.96)",
-          size: 10,
-          family: "IBM Plex Sans, sans-serif",
-        },
-      },
-      {
-        type: "scatter3d",
-        mode: "markers+text",
-        x: [queryPoint.x],
-        y: [queryPoint.y],
-        z: [queryPoint.z],
-        text: ["Q"],
-        textposition: "middle center",
-        customdata: [[state.retrieval.query]],
-        hovertemplate: "<b>Query</b><br>%{customdata[0]}<extra></extra>",
-        marker: {
-          size: 13,
-          color: "rgba(255, 90, 10, 0.98)",
-          line: {
-            color: "rgba(255,255,255,0.96)",
-            width: 3,
-          },
-        },
-        textfont: {
-          color: "rgba(255,255,255,0.96)",
-          size: 12,
-          family: "IBM Plex Sans, sans-serif",
-        },
-      },
-      {
-        type: "scatter3d",
-        mode: "markers+text",
-        x: [originPoint.x],
-        y: [originPoint.y],
-        z: [originPoint.z],
-        text: ["Origin"],
-        textposition: "top center",
-        hovertemplate: "<b>Origin</b><extra></extra>",
-        marker: {
-          size: 8,
-          color: "rgba(92, 103, 136, 0.88)",
-          line: {
-            color: "rgba(255,255,255,0.94)",
-            width: 2.2,
-          },
-        },
-        textfont: {
-          color: "#152a7e",
-          size: 12,
-          family: "IBM Plex Sans, sans-serif",
-        },
-      },
-      {
-        type: "scatter3d",
-        mode: "lines",
-        x: [],
-        y: [],
-        z: [],
-        hoverinfo: "skip",
-        line: {
-          color: "rgba(255, 141, 56, 0.72)",
-          width: 6,
-        },
-      },
-      {
-        type: "scatter3d",
-        mode: "lines",
-        x: [],
-        y: [],
-        z: [],
-        hoverinfo: "skip",
-        line: {
-          color: "rgba(23, 92, 230, 0.58)",
-          width: 5,
-        },
-      },
-    ],
-    build3DSceneLayout(scenePoints),
-    noteElement,
-    "Drag to rotate the retrieval space. Hover a highlighted chunk to reveal its cosine relation; tap to pin it.",
-    (Plotly, plotHost, note, defaultNote) => {
-      let pinnedIndex = null;
-
-      const applySelection = (resultIndex) => {
-        const point = topPoints[resultIndex];
-        if (!point) {
-          return;
-        }
-        const segments = {
-          chunk: {
-            x: [point.projection3d.x, originPoint.x],
-            y: [point.projection3d.y, originPoint.y],
-            z: [point.projection3d.z, originPoint.z],
-          },
-          query: {
-            x: [queryPoint.x, originPoint.x],
-            y: [queryPoint.y, originPoint.y],
-            z: [queryPoint.z, originPoint.z],
-          },
-        };
-        void Plotly.restyle(
-          plotHost,
-          {
-            x: [segments.chunk.x],
-            y: [segments.chunk.y],
-            z: [segments.chunk.z],
-          },
-          [4],
-        );
-        void Plotly.restyle(
-          plotHost,
-          {
-            x: [segments.query.x],
-            y: [segments.query.y],
-            z: [segments.query.z],
-          },
-          [5],
-        );
-        note.textContent = `${point.docName} - Chunk ${point.indexInDoc + 1} - cosine ${Math.round(point.score * 100)}%.`;
-      };
-
-      const clearSelection = () => {
-        void Plotly.restyle(plotHost, { x: [[]], y: [[]], z: [[]] }, [4]);
-        void Plotly.restyle(plotHost, { x: [[]], y: [[]], z: [[]] }, [5]);
-        note.textContent = defaultNote;
-      };
-
-      plotHost.on("plotly_hover", (event) => {
-        const hoveredPoint = event.points?.[0];
-        if (!hoveredPoint || hoveredPoint.curveNumber !== 1) {
-          return;
-        }
-        applySelection(hoveredPoint.pointNumber);
-      });
-
-      plotHost.on("plotly_unhover", () => {
-        if (pinnedIndex !== null) {
-          applySelection(pinnedIndex);
-        } else {
-          clearSelection();
-        }
-      });
-
-      plotHost.on("plotly_click", (event) => {
-        const clickedPoint = event.points?.[0];
-        if (!clickedPoint || clickedPoint.curveNumber !== 1) {
-          return;
-        }
-        pinnedIndex = clickedPoint.pointNumber;
-        applySelection(pinnedIndex);
-      });
-
-      plotHost.on("plotly_doubleclick", () => {
-        pinnedIndex = null;
-        clearSelection();
-      });
-    },
-  );
+  return `
+    <div class="retrieval-chart-shell">
+      <svg class="retrieval-chart-plot" viewBox="0 0 ${width} ${height}" aria-label="Retrieval similarity map">
+        ${buildScatterGuides(width, height)}
+        ${paragraphPoints
+          .filter((point) => !point.isRetrieved)
+          .map(
+            (point) => `
+              <circle
+                cx="${point.plotX}"
+                cy="${point.plotY}"
+                r="8"
+                class="retrieval-chart-point"
+                style="--retrieval-point:${getDocColor(point.docIndex)};"
+              >
+                <title>${escapeHtml(`${point.docName} - Chunk ${point.indexInDoc + 1}`)}</title>
+              </circle>
+            `,
+          )
+          .join("")}
+        ${retrievedPoints
+          .map((point) => {
+            const result = state.retrieval.topResults.find((candidate) => candidate.id === point.id);
+            const rank = state.retrieval.topResults.findIndex((candidate) => candidate.id === point.id) + 1;
+            const cosineLabel = `${Math.round(result.score * 100)}%`;
+            const cosineX = (point.plotX + queryPoint.plotX) / 2;
+            const cosineY = Math.min(point.plotY, queryPoint.plotY) - 18;
+            return `
+              <g class="retrieval-chart-node">
+                <g class="retrieval-chart-hover">
+                  <line
+                    x1="${point.plotX}"
+                    y1="${point.plotY}"
+                    x2="${originPoint.plotX}"
+                    y2="${originPoint.plotY}"
+                    class="retrieval-chart-link is-chunk"
+                  ></line>
+                  <line
+                    x1="${queryPoint.plotX}"
+                    y1="${queryPoint.plotY}"
+                    x2="${originPoint.plotX}"
+                    y2="${originPoint.plotY}"
+                    class="retrieval-chart-link is-query"
+                  ></line>
+                  <text x="${cosineX}" y="${cosineY}" class="retrieval-chart-cosine">cosine ${cosineLabel}</text>
+                </g>
+                <circle
+                  cx="${point.plotX}"
+                  cy="${point.plotY}"
+                  r="15"
+                  class="retrieval-chart-point is-top"
+                  style="--retrieval-point:${getDocColor(point.docIndex)};"
+                >
+                  <title>${escapeHtml(`${result.docName} - Chunk ${result.indexInDoc + 1} - cosine ${cosineLabel}`)}</title>
+                </circle>
+                <text x="${point.plotX}" y="${point.plotY + 4}" class="retrieval-chart-rank">${rank}</text>
+              </g>
+            `;
+          })
+          .join("")}
+        <g class="retrieval-chart-origin">
+          <circle cx="${originPoint.plotX}" cy="${originPoint.plotY}" r="10" class="retrieval-origin-point"></circle>
+          <text x="${originPoint.plotX}" y="${originPoint.plotY + 24}" class="retrieval-origin-label">Origin</text>
+        </g>
+        <g class="retrieval-chart-query">
+          <circle cx="${queryPoint.plotX}" cy="${queryPoint.plotY}" r="17" class="retrieval-query-point"></circle>
+          <text x="${queryPoint.plotX}" y="${queryPoint.plotY + 4}" class="retrieval-chart-rank">Q</text>
+          <text x="${queryPoint.plotX}" y="${queryPoint.plotY + 34}" class="retrieval-query-label">Query</text>
+        </g>
+      </svg>
+      <div class="retrieval-chart-legend">
+        <span class="doc-stat">Hover a highlighted chunk to reveal the cosine value and its relation to the query.</span>
+      </div>
+    </div>
+  `;
 }
 
 function renderRetrievalOutputs() {
@@ -2834,9 +2239,6 @@ function renderRetrievalOutputs() {
 
   if (elements.retrievalChartPanel) {
     elements.retrievalChartPanel.innerHTML = buildRetrievalChartMarkup();
-    const host = elements.retrievalChartPanel.querySelector(".plotly-chart-host");
-    const note = elements.retrievalChartPanel.querySelector(".plotly-chart-note");
-    void renderRetrievalChart3D(host, note);
   }
 }
 
@@ -2934,129 +2336,6 @@ async function loadRemoteScript(url) {
     script.onerror = () => reject(new Error(`Could not load script: ${url}`));
     document.head.appendChild(script);
   });
-}
-
-async function ensurePlotlyLoaded() {
-  if (window.Plotly) {
-    return window.Plotly;
-  }
-
-  await loadRemoteScript("https://cdn.plot.ly/plotly-2.35.2.min.js");
-  if (!window.Plotly) {
-    throw new Error("Plotly could not be loaded.");
-  }
-  return window.Plotly;
-}
-
-function hexToRgba(hex, alpha = 1) {
-  const normalized = hex.replace("#", "");
-  const full =
-    normalized.length === 3
-      ? normalized
-          .split("")
-          .map((character) => character + character)
-          .join("")
-      : normalized;
-  const value = Number.parseInt(full, 16);
-  const red = (value >> 16) & 255;
-  const green = (value >> 8) & 255;
-  const blue = value & 255;
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-}
-
-function buildPlotlyChartMarkup(defaultNote = "Drag to rotate. Tap a point to pin its details.") {
-  return `
-    <div class="plotly-chart-host"></div>
-    <div class="plotly-chart-note">${escapeHtml(defaultNote)}</div>
-  `;
-}
-
-function buildAxisRange(values, paddingRatio = 0.22) {
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
-  const span = Math.max(maxValue - minValue, 1e-6);
-  const padding = span * paddingRatio;
-  return [minValue - padding, maxValue + padding];
-}
-
-function build3DSceneLayout(points3D, overrides = {}) {
-  const xValues = points3D.map((point) => point.x);
-  const yValues = points3D.map((point) => point.y);
-  const zValues = points3D.map((point) => point.z);
-  const axisBase = {
-    showgrid: true,
-    gridcolor: "rgba(163, 180, 235, 0.24)",
-    zeroline: true,
-    zerolinecolor: "rgba(92, 103, 136, 0.28)",
-    showbackground: true,
-    backgroundcolor: "rgba(246, 249, 255, 0.78)",
-    ticks: "",
-    showticklabels: false,
-    title: "",
-    showspikes: false,
-  };
-
-  return {
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    margin: { l: 0, r: 0, t: 0, b: 0 },
-    showlegend: false,
-    dragmode: "orbit",
-    scene: {
-      aspectmode: "cube",
-      camera: {
-        eye: { x: 1.35, y: 1.25, z: 0.95 },
-      },
-      xaxis: {
-        ...axisBase,
-        range: buildAxisRange(xValues),
-      },
-      yaxis: {
-        ...axisBase,
-        range: buildAxisRange(yValues),
-      },
-      zaxis: {
-        ...axisBase,
-        range: buildAxisRange(zValues),
-      },
-      ...overrides.scene,
-    },
-    ...overrides,
-  };
-}
-
-async function renderPlotlyChart(host, traces, layout, noteElement, defaultNote, attachInteractions = null) {
-  if (!host?.isConnected) {
-    return;
-  }
-
-  if (noteElement) {
-    noteElement.textContent = defaultNote;
-  }
-
-  try {
-    const Plotly = await ensurePlotlyLoaded();
-    if (!host.isConnected) {
-      return;
-    }
-
-    Plotly.purge(host);
-    await Plotly.newPlot(host, traces, layout, {
-      displayModeBar: false,
-      responsive: true,
-      scrollZoom: false,
-    });
-
-    if (typeof attachInteractions === "function") {
-      attachInteractions(Plotly, host, noteElement, defaultNote);
-    }
-  } catch (error) {
-    console.error(error);
-    host.innerHTML = `<div class="empty-message">The interactive 3D chart could not be loaded.</div>`;
-    if (noteElement) {
-      noteElement.textContent = "Falling back was not possible because the chart library did not load.";
-    }
-  }
 }
 
 async function extractTextFromPdf(file) {

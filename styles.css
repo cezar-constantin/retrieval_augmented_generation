@@ -581,11 +581,8 @@ input[type="range"] {
 }
 
 .semantic-map {
+  position: relative;
   min-height: 360px;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 12px;
   border-radius: 20px;
   overflow: hidden;
   border: 1px solid rgba(163, 180, 235, 0.28);
@@ -598,7 +595,8 @@ input[type="range"] {
 }
 
 .semantic-map-empty {
-  min-height: 332px;
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -606,32 +604,10 @@ input[type="range"] {
   color: var(--muted);
 }
 
-.plotly-chart-host {
-  width: 100%;
-  min-height: 320px;
-}
-
-.plotly-chart-host .js-plotly-plot,
-.plotly-chart-host .plot-container,
-.plotly-chart-host .svg-container {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.plotly-chart-note {
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(163, 180, 235, 0.24);
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--blue-deep);
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-
 .map-point {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   transform: translate(-50%, -50%);
   border: 2px solid rgba(255, 255, 255, 0.9);
@@ -639,8 +615,8 @@ input[type="range"] {
 }
 
 .map-point.is-query {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   background: linear-gradient(135deg, var(--orange), var(--magenta));
   box-shadow: 0 0 0 8px rgba(197, 16, 73, 0.14);
 }
@@ -1028,9 +1004,7 @@ input[type="range"] {
   padding: 12px;
   min-height: 460px;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: stretch;
+  align-items: center;
 }
 
 .embedding-stage-aside {
@@ -1222,7 +1196,7 @@ input[type="range"] {
 .semantic-space-point {
   fill: var(--space-point, var(--blue));
   stroke: rgba(255, 255, 255, 0.96);
-  stroke-width: 3;
+  stroke-width: 3.4;
   opacity: 0.9;
 }
 
@@ -1290,18 +1264,6 @@ input[type="range"] {
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 246, 255, 0.94));
 }
 
-.semantic-map .plotly-chart-host {
-  min-height: 332px;
-}
-
-.embedding-stage-visual .plotly-chart-host {
-  min-height: 420px;
-}
-
-.retrieval-chart-panel .plotly-chart-host {
-  min-height: 520px;
-}
-
 .retrieval-chart-shell {
   display: grid;
   gap: 12px;
@@ -1316,12 +1278,12 @@ input[type="range"] {
   fill: var(--retrieval-point, rgba(92, 103, 136, 0.28));
   opacity: 0.24;
   stroke: rgba(255, 255, 255, 0.88);
-  stroke-width: 2;
+  stroke-width: 2.4;
 }
 
 .retrieval-chart-point.is-top {
   opacity: 1;
-  stroke-width: 3.5;
+  stroke-width: 4;
 }
 
 .retrieval-chart-node {
@@ -1687,12 +1649,6 @@ input[type="range"] {
   }
 
   .semantic-map {
-    min-height: 280px;
-  }
-
-  .semantic-map .plotly-chart-host,
-  .embedding-stage-visual .plotly-chart-host,
-  .retrieval-chart-panel .plotly-chart-host {
     min-height: 280px;
   }
 
