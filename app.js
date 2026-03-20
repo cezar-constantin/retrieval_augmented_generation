@@ -3,6 +3,8 @@ import { documentationCopy, demoDocuments, suggestedQuestions } from "./content.
 const DOC_PALETTE = ["#1a35a8", "#2f9db7", "#c51049", "#7ea51f", "#ff5a0a", "#5c6788"];
 const PREVIEW_EMBED_DIMENSIONS = 24;
 const FALLBACK_EMBED_DIMENSIONS = 192;
+const EXTRACTION_VIEWER_TARGET_CHARS = 900;
+const EXTRACTION_VIEWER_MIN_CHARS = 420;
 
 const state = {
   pendingFiles: [],
@@ -63,7 +65,6 @@ const elements = {
   rankingList: document.getElementById("ranking-list"),
   extractionLiveGrid: document.getElementById("extraction-live-grid"),
   extractingReferenceActions: document.getElementById("extracting-reference-actions"),
-  extractingReferenceTitle: document.getElementById("extracting-reference-title"),
   extractingReferenceOutput: document.getElementById("extracting-reference-output"),
   splittingReferenceActions: document.getElementById("splitting-reference-actions"),
   splittingReferenceTitle: document.getElementById("splitting-reference-title"),
@@ -101,6 +102,52 @@ function summarizeText(text, maxLength = 220) {
     return text;
   }
   return `${text.slice(0, maxLength).trimEnd()}...`;
+}
+
+function splitTextIntoDisplayChunks(text, targetChars = EXTRACTION_VIEWER_TARGET_CHARS, minChars = EXTRACTION_VIEWER_MIN_CHARS) {
+  const normalized = normalizeExtractedText(text);
+  if (!normalized) {
+    return [];
+  }
+
+  const chunks = [];
+  let cursor = 0;
+
+  while (cursor < normalized.length) {
+    const remaining = normalized.length - cursor;
+    if (remaining <= targetChars) {
+      chunks.push(normalized.slice(cursor).trim());
+      break;
+    }
+
+    const preferredEnd = Math.min(cursor + targetChars, normalized.length);
+    let splitPoint = normalized.lastIndexOf("\n\n", preferredEnd);
+
+    if (splitPoint <= cursor + minChars) {
+      splitPoint = normalized.lastIndexOf("\n", preferredEnd);
+    }
+    if (splitPoint <= cursor + minChars) {
+      splitPoint = normalized.lastIndexOf(". ", preferredEnd);
+      if (splitPoint > cursor + minChars) {
+        splitPoint += 1;
+      }
+    }
+    if (splitPoint <= cursor + minChars) {
+      splitPoint = normalized.lastIndexOf(" ", preferredEnd);
+    }
+    if (splitPoint <= cursor) {
+      splitPoint = preferredEnd;
+    }
+
+    chunks.push(normalized.slice(cursor, splitPoint).trim());
+    cursor = splitPoint;
+
+    while (cursor < normalized.length && /\s/.test(normalized[cursor])) {
+      cursor += 1;
+    }
+  }
+
+  return chunks.filter(Boolean);
 }
 
 function normalizeExtractedText(text) {
@@ -637,7 +684,9 @@ function updateHeroMetrics() {
   elements.paragraphCount.textContent = `${state.paragraphs.length} indexed`;
   elements.topKValue.textContent = String(state.topK);
   elements.minLengthValue.textContent = `${state.minParagraphLength} chars`;
-  elements.splittingSummaryPill.textContent = `Threshold: ${state.minParagraphLength} chars`;
+  if (elements.splittingSummaryPill) {
+    elements.splittingSummaryPill.textContent = `Threshold: ${state.minParagraphLength} chars`;
+  }
   updateEncoderStatus();
 }
 
@@ -690,27 +739,27 @@ function getDocumentReferenceButtons() {
       }));
 }
 
-function buildRawSplitViewer(documentName, rawCandidates, docColor, totalChars) {
-  if (!rawCandidates.length) {
-    return `<div class="empty-message">No raw splits were produced for this document.</div>`;
+function buildExtractedChunkViewer(documentName, chunks, docColor, totalChars) {
+  if (!chunks.length) {
+    return `<div class="empty-message">No extracted chunks were produced for this document.</div>`;
   }
 
   return `
     <div class="reference-meta">
       <span class="doc-stat">${escapeHtml(documentName)}</span>
-      <span class="doc-stat">${rawCandidates.length} raw split${rawCandidates.length === 1 ? "" : "s"}</span>
+      <span class="doc-stat">${chunks.length} chunk${chunks.length === 1 ? "" : "s"}</span>
       <span class="doc-stat">${totalChars.toLocaleString()} chars</span>
     </div>
     <div class="raw-split-stack">
-      ${rawCandidates
+      ${chunks
         .map(
-          (split, index) => `
+          (chunk, index) => `
             <section class="raw-split-block" style="--split-accent:${docColor};">
               <div class="raw-split-header">
-                <span class="raw-split-index">Raw split ${index + 1}</span>
-                <span class="doc-stat">${split.length} chars</span>
+                <span class="raw-split-index">Chunk ${index + 1}</span>
+                <span class="doc-stat">${chunk.length} chars</span>
               </div>
-              <p>${escapeHtml(split)}</p>
+              <p>${escapeHtml(chunk)}</p>
             </section>
           `,
         )
@@ -720,11 +769,7 @@ function buildRawSplitViewer(documentName, rawCandidates, docColor, totalChars) 
 }
 
 function renderExtractionReferencePanel() {
-  if (
-    !elements.extractingReferenceActions ||
-    !elements.extractingReferenceTitle ||
-    !elements.extractingReferenceOutput
-  ) {
+  if (!elements.extractingReferenceActions || !elements.extractingReferenceOutput) {
     return;
   }
 
@@ -778,7 +823,6 @@ function renderExtractionReferencePanel() {
   });
 
   if (state.extractionReference.type === "code") {
-    elements.extractingReferenceTitle.textContent = "Python reference";
     elements.extractingReferenceOutput.innerHTML = `
       <pre class="code-block reference-code-block"><code>${escapeHtml(documentationCopy.tabs.extracting.code)}</code></pre>
     `;
@@ -790,12 +834,12 @@ function renderExtractionReferencePanel() {
   );
 
   if (selectedDocument) {
-    elements.extractingReferenceTitle.textContent = "Python reference";
-    elements.extractingReferenceOutput.innerHTML = buildRawSplitViewer(
+    const normalizedText = normalizeExtractedText(selectedDocument.text);
+    elements.extractingReferenceOutput.innerHTML = buildExtractedChunkViewer(
       selectedDocument.name,
-      selectedDocument.rawParagraphCandidates,
+      splitTextIntoDisplayChunks(normalizedText),
       getDocColor(selectedDocument.docIndex),
-      selectedDocument.text.length,
+      normalizedText.length,
     );
     return;
   }
@@ -803,14 +847,12 @@ function renderExtractionReferencePanel() {
   const pendingEntry = state.pendingFiles.find(
     (entry) => entry.name === state.extractionReference.documentName,
   );
-  elements.extractingReferenceTitle.textContent = "Python reference";
 
   if (pendingEntry?.text) {
     const normalizedText = normalizeExtractedText(pendingEntry.text);
-    const { rawCandidates } = splitDocumentIntoParagraphs(normalizedText, state.minParagraphLength);
-    elements.extractingReferenceOutput.innerHTML = buildRawSplitViewer(
+    elements.extractingReferenceOutput.innerHTML = buildExtractedChunkViewer(
       pendingEntry.name,
-      rawCandidates,
+      splitTextIntoDisplayChunks(normalizedText),
       getDocColor(state.pendingFiles.findIndex((entry) => entry.name === pendingEntry.name)),
       normalizedText.length,
     );
@@ -818,7 +860,7 @@ function renderExtractionReferencePanel() {
   }
 
   elements.extractingReferenceOutput.innerHTML = `
-    <div class="empty-message">Run the pipeline to extract this document and inspect all raw splits.</div>
+    <div class="empty-message">Run the pipeline to extract this document and inspect the extracted chunks.</div>
   `;
 }
 
@@ -963,6 +1005,10 @@ function renderSplittingReferencePanel() {
 function renderExtractionGrid() {
   renderExtractionReferencePanel();
 
+  if (!elements.extractionLiveGrid) {
+    return;
+  }
+
   if (!state.documents.length && !state.pendingFiles.length) {
     elements.extractionLiveGrid.innerHTML = `<div class="empty-message">Load documents to inspect the extracted text.</div>`;
     return;
@@ -1011,6 +1057,10 @@ function renderExtractionGrid() {
 
 function renderParagraphBoard() {
   renderSplittingReferencePanel();
+
+  if (!elements.paragraphBoard) {
+    return;
+  }
 
   if (!state.documents.length) {
     elements.paragraphBoard.innerHTML = `<div class="empty-message">Run the pipeline to inspect the paragraph chunks.</div>`;
