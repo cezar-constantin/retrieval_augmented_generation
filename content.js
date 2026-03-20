@@ -52,16 +52,11 @@ for doc_name, text in document_texts.items():
             meta_data.append(doc_name)`,
     },
     embeddings: {
-      kicker: "7. Pre-computing Embeddings for All Paragraphs",
+      kicker: "",
       title: "Pre-computing embeddings for all paragraphs",
       copy:
-        "The original code loads a SentenceTransformer model called all-MiniLM-L6-v2 and encodes each paragraph into a dense numerical vector. Those vectors capture semantic meaning, so similar ideas end up close together even when the wording changes.",
-      bullets: [
-        "The same encoder is used for both document paragraphs and the user query.",
-        "Pre-computing paragraph embeddings makes later searches much faster.",
-        "Cosine similarity works because all texts live in the same vector space.",
-        "In this browser version, the simulator first tries to load MiniLM in the client, then falls back to a deterministic teaching-safe vectorizer if the model cannot be fetched.",
-      ],
+        "The model converts each paragraph into a compact numerical representation called an embedding. Paragraphs with similar meaning end up closer together, which helps the retrieval step find relevant content even when the wording is different.",
+      bullets: [],
       details: [
         {
           title: "Tokenization",

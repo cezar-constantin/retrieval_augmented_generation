@@ -603,10 +603,14 @@ function renderDocumentationContent() {
   document.getElementById("splitting-copy").textContent = splitting.copy;
 
   const embeddings = tabs.embeddings;
-  document.getElementById("embeddings-kicker").textContent = embeddings.kicker;
+  const embeddingsKicker = document.getElementById("embeddings-kicker");
+  embeddingsKicker.textContent = embeddings.kicker;
+  embeddingsKicker.hidden = !embeddings.kicker;
   document.getElementById("embeddings-title").textContent = embeddings.title;
   document.getElementById("embeddings-copy").textContent = embeddings.copy;
-  renderBulletList(document.getElementById("embeddings-bullets"), embeddings.bullets);
+  const embeddingsBullets = document.getElementById("embeddings-bullets");
+  renderBulletList(embeddingsBullets, embeddings.bullets);
+  embeddingsBullets.hidden = !embeddings.bullets.length;
   document.getElementById("embeddings-code").textContent = embeddings.code;
 
   elements.embeddingDetailsGrid.innerHTML = embeddings.details
