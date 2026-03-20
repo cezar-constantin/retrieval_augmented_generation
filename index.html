@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Retrieval Augmented Generation</title>
+    <meta
+      name="description"
+      content="Interactive RAG teaching simulator with document upload, paragraph chunking, embeddings, retrieval ranking, and grounded answer generation."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero card">
+        <div class="hero-copy">
+          <p class="eyebrow" id="hero-eyebrow">Interactive teaching simulator</p>
+          <h1 id="hero-title">Retrieval Augmented Generation</h1>
+          <p class="hero-text" id="hero-text">
+            Upload documents, compute embeddings, retrieve the most relevant passages, and explain the entire RAG
+            pipeline visually.
+          </p>
+          <div class="hero-flow" aria-label="RAG flow">
+            <span class="flow-chip">Extract text</span>
+            <span class="flow-chip">Split paragraphs</span>
+            <span class="flow-chip">Embed chunks</span>
+            <span class="flow-chip">Retrieve evidence</span>
+            <span class="flow-chip">Ground answer</span>
+          </div>
+        </div>
+        <div class="hero-badges">
+          <article class="metric-chip">
+            <span class="metric-label">Encoder</span>
+            <strong id="encoder-status">Waiting to load</strong>
+          </article>
+          <article class="metric-chip">
+            <span class="metric-label">Documents</span>
+            <strong id="document-count">0 loaded</strong>
+          </article>
+          <article class="metric-chip">
+            <span class="metric-label">Paragraphs</span>
+            <strong id="paragraph-count">0 indexed</strong>
+          </article>
+          <article class="metric-chip">
+            <span class="metric-label">Deployment</span>
+            <strong>GitHub Pages ready</strong>
+          </article>
+        </div>
+      </header>
+
+      <section class="tabs card" aria-label="Content tabs">
+        <div class="tab-list" role="tablist">
+          <button
+            class="tab-button is-active"
+            id="tab-button-simulator"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tab-panel-simulator"
+            data-tab-target="simulator"
+          >
+            Simulator
+          </button>
+          <button
+            class="tab-button"
+            id="tab-button-extracting"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-panel-extracting"
+            data-tab-target="extracting"
+          >
+            Extracting Text
+          </button>
+          <button
+            class="tab-button"
+            id="tab-button-splitting"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-panel-splitting"
+            data-tab-target="splitting"
+          >
+            Split Paragraphs
+          </button>
+          <button
+            class="tab-button"
+            id="tab-button-embeddings"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-panel-embeddings"
+            data-tab-target="embeddings"
+          >
+            Embeddings
+          </button>
+          <button
+            class="tab-button"
+            id="tab-button-retrieval"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-panel-retrieval"
+            data-tab-target="retrieval"
+          >
+            Retrieval Function
+          </button>
+        </div>
+      </section>
+
+      <section
+        class="tab-panel is-active"
+        id="tab-panel-simulator"
+        role="tabpanel"
+        aria-labelledby="tab-button-simulator"
+        data-tab-panel="simulator"
+      >
+        <main class="dashboard">
+          <section class="card workbench-panel">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">Hands-on workflow</p>
+                <h2>Student workbench</h2>
+              </div>
+              <span class="status-pill" id="pipeline-status">Waiting for documents</span>
+            </div>
+
+            <p class="helper-copy" id="simulator-copy">
+              This view lets students run the entire pipeline and inspect every intermediate representation.
+            </p>
+
+            <div class="upload-stage">
+              <label class="upload-dropzone" for="file-input">
+                <input id="file-input" type="file" multiple accept=".pdf,.docx,.txt,.md" />
+                <strong>Drop documents here or click to browse</strong>
+                <span>Supported in the browser: PDF, DOCX, TXT, and Markdown files.</span>
+              </label>
+
+              <div class="button-row">
+                <button class="secondary-button" id="load-demo-button" type="button">Load demo documents</button>
+                <button class="primary-button" id="run-pipeline-button" type="button">Run pipeline</button>
+                <button class="ghost-button" id="reset-button" type="button">Reset</button>
+              </div>
+            </div>
+
+            <section class="control-grid" aria-label="Pipeline controls">
+              <div class="range-card">
+                <label class="range-label" for="top-k-range">
+                  <span>Top-k retrieved passages</span>
+                  <strong id="top-k-value">3</strong>
+                </label>
+                <input id="top-k-range" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="range-card">
+                <label class="range-label" for="min-length-range">
+                  <span>Minimum paragraph length</span>
+                  <strong id="min-length-value">50 chars</strong>
+                </label>
+                <input id="min-length-range" type="range" min="20" max="120" step="5" value="50" />
+              </div>
+            </section>
+
+            <section class="question-stage">
+              <div class="question-heading">
+                <div>
+                  <p class="section-kicker">Retrieval prompt</p>
+                  <h3>Ask a question about the chosen documents</h3>
+                </div>
+              </div>
+              <textarea
+                id="query-input"
+                class="query-input"
+                rows="4"
+                placeholder="Example: How is backtesting used in monitoring?"
+              ></textarea>
+              <div class="suggestion-row" id="suggestion-row" aria-label="Suggested questions"></div>
+              <div class="button-row">
+                <button class="primary-button" id="ask-button" type="button">Ask the documents</button>
+              </div>
+            </section>
+
+            <section class="note-card">
+              <p class="card-kicker">Teaching note</p>
+              <p id="simulator-note">
+                The original Python script retrieves passages. This simulator adds a browser-side grounded answer so the
+                full RAG story is easier to explain in class.
+              </p>
+            </section>
+
+            <section class="answer-card" id="answer-card" aria-live="polite">
+              <p class="card-kicker">Grounded answer</p>
+              <h3 id="answer-title">No answer yet</h3>
+              <p class="answer-copy" id="answer-copy">
+                Upload or load documents, run the pipeline, and submit a question to generate a grounded answer.
+              </p>
+              <div class="source-tags" id="answer-sources"></div>
+            </section>
+          </section>
+
+          <section class="card observatory-panel">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">Pipeline observatory</p>
+                <h2>What the system is doing internally</h2>
+              </div>
+            </div>
+
+            <div class="step-grid" id="step-grid">
+              <article class="step-card" data-step="extracting">
+                <div class="step-header">
+                  <span class="step-index">1</span>
+                  <div>
+                    <p class="card-kicker">Extracting text</p>
+                    <h3>Read document content</h3>
+                  </div>
+                </div>
+                <p class="step-copy" id="step-copy-extracting">
+                  The simulator is waiting for documents before it can extract text.
+                </p>
+              </article>
+              <article class="step-card" data-step="splitting">
+                <div class="step-header">
+                  <span class="step-index">2</span>
+                  <div>
+                    <p class="card-kicker">Splitting</p>
+                    <h3>Create paragraph chunks</h3>
+                  </div>
+                </div>
+                <p class="step-copy" id="step-copy-splitting">
+                  After extraction, the text will be split into newline-based paragraphs.
+                </p>
+              </article>
+              <article class="step-card" data-step="embeddings">
+                <div class="step-header">
+                  <span class="step-index">3</span>
+                  <div>
+                    <p class="card-kicker">Embeddings</p>
+                    <h3>Map chunks into vectors</h3>
+                  </div>
+                </div>
+                <p class="step-copy" id="step-copy-embeddings">
+                  Paragraph embeddings will be pre-computed once the chunks are ready.
+                </p>
+              </article>
+              <article class="step-card" data-step="retrieval">
+                <div class="step-header">
+                  <span class="step-index">4</span>
+                  <div>
+                    <p class="card-kicker">Retrieval</p>
+                    <h3>Rank the best passages</h3>
+                  </div>
+                </div>
+                <p class="step-copy" id="step-copy-retrieval">
+                  The query will be encoded and compared with every stored paragraph embedding.
+                </p>
+              </article>
+              <article class="step-card" data-step="generation">
+                <div class="step-header">
+                  <span class="step-index">5</span>
+                  <div>
+                    <p class="card-kicker">Grounding</p>
+                    <h3>Build the final answer</h3>
+                  </div>
+                </div>
+                <p class="step-copy" id="step-copy-generation">
+                  Retrieved evidence will be summarized into one grounded teaching answer.
+                </p>
+              </article>
+            </div>
+
+            <div class="observatory-grid">
+              <article class="visual-card">
+                <div class="visual-header">
+                  <div>
+                    <p class="card-kicker">Semantic space</p>
+                    <h3>Projected paragraph map</h3>
+                  </div>
+                </div>
+                <p class="visual-copy">
+                  Each dot is a paragraph embedding projected into a teaching-friendly 2D map. The query appears after
+                  retrieval and the closest passages glow more strongly.
+                </p>
+                <div class="semantic-map-shell">
+                  <div class="semantic-map" id="semantic-map">
+                    <div class="semantic-map-empty">Paragraph points will appear here after the pipeline runs.</div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="visual-card">
+                <div class="visual-header">
+                  <div>
+                    <p class="card-kicker">Ranking</p>
+                    <h3>Top retrieved paragraphs</h3>
+                  </div>
+                </div>
+                <p class="visual-copy">
+                  Cosine similarity ranks the passages. Higher bars mean stronger semantic alignment with the query.
+                </p>
+                <div class="ranking-list" id="ranking-list">
+                  <div class="empty-message">Run a query to populate the ranking list.</div>
+                </div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </section>
+
+      <section
+        class="tab-panel"
+        id="tab-panel-extracting"
+        role="tabpanel"
+        aria-labelledby="tab-button-extracting"
+        data-tab-panel="extracting"
+        hidden
+      >
+        <section class="card topic-card">
+          <div class="topic-layout">
+            <div>
+              <p class="section-kicker" id="extracting-kicker"></p>
+              <h2 id="extracting-title"></h2>
+              <p class="topic-copy" id="extracting-copy"></p>
+              <div class="bullet-list" id="extracting-bullets"></div>
+            </div>
+            <article class="code-card">
+              <p class="card-kicker">Python reference</p>
+              <pre class="code-block"><code id="extracting-code"></code></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="card live-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Live extraction</p>
+              <h2>Document text previews</h2>
+            </div>
+          </div>
+          <div class="live-grid" id="extraction-live-grid">
+            <div class="empty-message">Load documents to inspect the extracted text.</div>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="tab-panel"
+        id="tab-panel-splitting"
+        role="tabpanel"
+        aria-labelledby="tab-button-splitting"
+        data-tab-panel="splitting"
+        hidden
+      >
+        <section class="card topic-card">
+          <div class="topic-layout">
+            <div>
+              <p class="section-kicker" id="splitting-kicker"></p>
+              <h2 id="splitting-title"></h2>
+              <p class="topic-copy" id="splitting-copy"></p>
+              <div class="bullet-list" id="splitting-bullets"></div>
+            </div>
+            <article class="code-card">
+              <p class="card-kicker">Python reference</p>
+              <pre class="code-block"><code id="splitting-code"></code></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="card live-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Live chunking</p>
+              <h2>Paragraph candidates and filtered chunks</h2>
+            </div>
+            <span class="status-pill" id="splitting-summary-pill">Threshold: 50 chars</span>
+          </div>
+          <div class="paragraph-board" id="paragraph-board">
+            <div class="empty-message">Run the pipeline to inspect the paragraph chunks.</div>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="tab-panel"
+        id="tab-panel-embeddings"
+        role="tabpanel"
+        aria-labelledby="tab-button-embeddings"
+        data-tab-panel="embeddings"
+        hidden
+      >
+        <section class="card topic-card">
+          <div class="topic-layout">
+            <div>
+              <p class="section-kicker" id="embeddings-kicker"></p>
+              <h2 id="embeddings-title"></h2>
+              <p class="topic-copy" id="embeddings-copy"></p>
+              <div class="bullet-list" id="embeddings-bullets"></div>
+            </div>
+            <article class="code-card">
+              <p class="card-kicker">Python reference</p>
+              <pre class="code-block"><code id="embeddings-code"></code></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="detail-grid" id="embedding-details-grid"></section>
+
+        <section class="card live-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Live vectors</p>
+              <h2>Embedding previews</h2>
+            </div>
+          </div>
+          <div class="embedding-grid" id="embedding-grid">
+            <div class="empty-message">Run the pipeline to preview paragraph embeddings.</div>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="tab-panel"
+        id="tab-panel-retrieval"
+        role="tabpanel"
+        aria-labelledby="tab-button-retrieval"
+        data-tab-panel="retrieval"
+        hidden
+      >
+        <section class="card topic-card">
+          <div class="topic-layout">
+            <div>
+              <p class="section-kicker" id="retrieval-kicker"></p>
+              <h2 id="retrieval-title"></h2>
+              <p class="topic-copy" id="retrieval-copy"></p>
+              <div class="bullet-list" id="retrieval-bullets"></div>
+              <div class="formula-card">
+                <p class="card-kicker" id="retrieval-formula-title"></p>
+                <h3 id="retrieval-formula"></h3>
+              </div>
+            </div>
+            <article class="code-card">
+              <p class="card-kicker">Python reference</p>
+              <pre class="code-block"><code id="retrieval-code"></code></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="card live-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Live retrieval</p>
+              <h2>Similarity scores and supporting passages</h2>
+            </div>
+          </div>
+          <div class="retrieval-grid">
+            <div class="query-card">
+              <p class="card-kicker">Current query</p>
+              <h3 id="retrieval-query-title">No query yet</h3>
+              <p id="retrieval-query-copy" class="topic-copy">
+                Submit a question to see how the query embedding is compared against every paragraph.
+              </p>
+            </div>
+            <div class="retrieval-results" id="retrieval-results">
+              <div class="empty-message">Retrieved passages will appear here after a query.</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
