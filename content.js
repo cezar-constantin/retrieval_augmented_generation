@@ -34,16 +34,11 @@ export const documentationCopy = {
     return text`,
     },
     splitting: {
-      kicker: "6. Loading and Splitting Document Texts into Paragraphs",
+      kicker: "",
       title: "Loading and Splitting Document Texts into Paragraphs",
       copy:
-        "After extraction, the Python script loops through every document, splits the text by newline characters, strips whitespace, and keeps only paragraphs with at least 50 characters. The simulator mirrors that teaching logic so students can see how chunks are formed before retrieval.",
-      bullets: [
-        "A dictionary comprehension loads the full text for each document.",
-        "Each document is split into candidate paragraphs using newline boundaries.",
-        "Paragraphs shorter than 50 characters are removed in the original script.",
-        "Metadata is stored alongside every paragraph so the source document stays visible during retrieval.",
-      ],
+        "After extraction, the Python script loops through every document, splits the text by newline characters, strips whitespace, and keeps only paragraphs with at least 50 characters.",
+      bullets: [],
       code: `document_texts = {name: extract_text(path) for name, path in file_paths.items()}
 
 paragraphs = []

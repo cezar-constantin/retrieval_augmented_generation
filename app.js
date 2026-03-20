@@ -12,6 +12,10 @@ const state = {
     type: "code",
     documentName: null,
   },
+  splittingReference: {
+    type: "code",
+    documentName: null,
+  },
   processing: false,
   pipelineDirty: false,
   topK: 3,
@@ -61,6 +65,9 @@ const elements = {
   extractingReferenceActions: document.getElementById("extracting-reference-actions"),
   extractingReferenceTitle: document.getElementById("extracting-reference-title"),
   extractingReferenceOutput: document.getElementById("extracting-reference-output"),
+  splittingReferenceActions: document.getElementById("splitting-reference-actions"),
+  splittingReferenceTitle: document.getElementById("splitting-reference-title"),
+  splittingReferenceOutput: document.getElementById("splitting-reference-output"),
   paragraphBoard: document.getElementById("paragraph-board"),
   splittingSummaryPill: document.getElementById("splitting-summary-pill"),
   embeddingDetailsGrid: document.getElementById("embedding-details-grid"),
@@ -265,11 +272,11 @@ function renderDocumentationContent() {
   document.getElementById("extracting-copy").textContent = extraction.copy;
 
   const splitting = tabs.splitting;
-  document.getElementById("splitting-kicker").textContent = splitting.kicker;
+  const splittingKicker = document.getElementById("splitting-kicker");
+  splittingKicker.textContent = splitting.kicker;
+  splittingKicker.hidden = !splitting.kicker;
   document.getElementById("splitting-title").textContent = splitting.title;
   document.getElementById("splitting-copy").textContent = splitting.copy;
-  renderBulletList(document.getElementById("splitting-bullets"), splitting.bullets);
-  document.getElementById("splitting-code").textContent = splitting.code;
 
   const embeddings = tabs.embeddings;
   document.getElementById("embeddings-kicker").textContent = embeddings.kicker;
@@ -394,18 +401,16 @@ function setExtractionReference(type, documentName = null) {
   renderExtractionReferencePanel();
 }
 
-function getExtractionReferenceButtons() {
-  if (state.documents.length) {
-    return state.documents.map((document) => ({
-      name: document.name,
-      sourceLabel: document.sourceLabel,
-    }));
-  }
-
-  return state.pendingFiles.map((entry) => ({
-    name: entry.name,
-    sourceLabel: entry.sourceLabel,
-  }));
+function getDocumentReferenceButtons() {
+  return state.documents.length
+    ? state.documents.map((document) => ({
+        name: document.name,
+        sourceLabel: document.sourceLabel,
+      }))
+    : state.pendingFiles.map((entry) => ({
+        name: entry.name,
+        sourceLabel: entry.sourceLabel,
+      }));
 }
 
 function buildRawSplitViewer(documentName, rawCandidates, docColor, totalChars) {
@@ -446,7 +451,7 @@ function renderExtractionReferencePanel() {
     return;
   }
 
-  const buttons = getExtractionReferenceButtons();
+  const buttons = getDocumentReferenceButtons();
   const availableNames = new Set(buttons.map((button) => button.name));
   if (
     state.extractionReference.type === "document" &&
@@ -540,6 +545,144 @@ function renderExtractionReferencePanel() {
   `;
 }
 
+function setSplittingReference(type, documentName = null) {
+  state.splittingReference = { type, documentName };
+  renderSplittingReferencePanel();
+}
+
+function buildParagraphSplitViewer(documentName, rawCandidates, docColor) {
+  if (!rawCandidates.length) {
+    return `<div class="empty-message">No paragraph splits were produced for this document.</div>`;
+  }
+
+  const keptCount = rawCandidates.filter((candidate) => candidate.length >= state.minParagraphLength).length;
+  return `
+    <div class="reference-meta">
+      <span class="doc-stat">${escapeHtml(documentName)}</span>
+      <span class="doc-stat">${rawCandidates.length} paragraph split${rawCandidates.length === 1 ? "" : "s"}</span>
+      <span class="doc-stat">${keptCount} kept at ${state.minParagraphLength}+ chars</span>
+    </div>
+    <div class="raw-split-stack">
+      ${rawCandidates
+        .map((split, index) => {
+          const isKept = split.length >= state.minParagraphLength;
+          return `
+            <section class="raw-split-block ${isKept ? "is-kept" : "is-filtered"}" style="--split-accent:${docColor};">
+              <div class="raw-split-header">
+                <span class="raw-split-index">Paragraph split ${index + 1}</span>
+                <span class="doc-stat">${isKept ? "Kept" : "Filtered"}</span>
+              </div>
+              <p>${escapeHtml(split)}</p>
+            </section>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSplittingReferencePanel() {
+  if (
+    !elements.splittingReferenceActions ||
+    !elements.splittingReferenceTitle ||
+    !elements.splittingReferenceOutput
+  ) {
+    return;
+  }
+
+  const buttons = getDocumentReferenceButtons();
+  const availableNames = new Set(buttons.map((button) => button.name));
+  if (
+    state.splittingReference.type === "document" &&
+    !availableNames.has(state.splittingReference.documentName)
+  ) {
+    state.splittingReference = { type: "code", documentName: null };
+  }
+
+  elements.splittingReferenceActions.innerHTML = `
+    <button
+      type="button"
+      class="secondary-button reference-button ${state.splittingReference.type === "code" ? "is-active" : ""}"
+      data-splitting-reference="code"
+    >
+      Show python code
+    </button>
+    ${buttons
+      .map(
+        (button) => `
+          <button
+            type="button"
+            class="secondary-button reference-button ${
+              state.splittingReference.type === "document" &&
+              state.splittingReference.documentName === button.name
+                ? "is-active"
+                : ""
+            }"
+            data-splitting-document="${escapeHtml(button.name)}"
+          >
+            ${escapeHtml(button.name)}
+          </button>
+        `,
+      )
+      .join("")}
+  `;
+
+  elements.splittingReferenceActions
+    .querySelector('[data-splitting-reference="code"]')
+    ?.addEventListener("click", () => {
+      setSplittingReference("code");
+    });
+
+  elements.splittingReferenceActions.querySelectorAll("[data-splitting-document]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setSplittingReference("document", button.getAttribute("data-splitting-document"));
+    });
+  });
+
+  if (state.splittingReference.type === "code") {
+    elements.splittingReferenceTitle.textContent = "Python reference";
+    elements.splittingReferenceOutput.innerHTML = `
+      <pre class="code-block reference-code-block"><code>${escapeHtml(documentationCopy.tabs.splitting.code)}</code></pre>
+    `;
+    return;
+  }
+
+  const selectedDocument = state.documents.find(
+    (document) => document.name === state.splittingReference.documentName,
+  );
+
+  if (selectedDocument) {
+    const { rawCandidates } = splitDocumentIntoParagraphs(selectedDocument.text, state.minParagraphLength);
+    elements.splittingReferenceTitle.textContent = "Python reference";
+    elements.splittingReferenceOutput.innerHTML = buildParagraphSplitViewer(
+      selectedDocument.name,
+      rawCandidates,
+      getDocColor(selectedDocument.docIndex),
+    );
+    return;
+  }
+
+  const pendingEntry = state.pendingFiles.find(
+    (entry) => entry.name === state.splittingReference.documentName,
+  );
+  elements.splittingReferenceTitle.textContent = "Python reference";
+
+  if (pendingEntry?.text) {
+    const normalizedText = normalizeExtractedText(pendingEntry.text);
+    const { rawCandidates } = splitDocumentIntoParagraphs(normalizedText, state.minParagraphLength);
+    elements.splittingReferenceOutput.innerHTML = buildParagraphSplitViewer(
+      pendingEntry.name,
+      rawCandidates,
+      getDocColor(state.pendingFiles.findIndex((entry) => entry.name === pendingEntry.name)),
+    );
+    return;
+  }
+
+  elements.splittingReferenceOutput.innerHTML = `
+    <div class="empty-message">Run the pipeline to inspect the paragraph splits for this document.</div>
+  `;
+}
+
 function renderExtractionGrid() {
   renderExtractionReferencePanel();
 
@@ -590,6 +733,8 @@ function renderExtractionGrid() {
 }
 
 function renderParagraphBoard() {
+  renderSplittingReferencePanel();
+
   if (!state.documents.length) {
     elements.paragraphBoard.innerHTML = `<div class="empty-message">Run the pipeline to inspect the paragraph chunks.</div>`;
     return;
@@ -1253,6 +1398,10 @@ function resetAll() {
     type: "code",
     documentName: null,
   };
+  state.splittingReference = {
+    type: "code",
+    documentName: null,
+  };
   state.pipelineDirty = false;
   state.retrieval = null;
   elements.fileInput.value = "";
@@ -1282,6 +1431,10 @@ function addPendingEntries(entries, autoRun = false) {
   state.documents = [];
   state.paragraphs = [];
   state.extractionReference = {
+    type: "code",
+    documentName: null,
+  };
+  state.splittingReference = {
     type: "code",
     documentName: null,
   };

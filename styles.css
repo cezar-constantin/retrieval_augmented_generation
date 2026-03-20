@@ -821,6 +821,20 @@ input[type="range"] {
   color: var(--ink);
 }
 
+.raw-split-block.is-kept {
+  box-shadow: 0 12px 24px rgba(79, 185, 209, 0.12);
+}
+
+.raw-split-block.is-filtered {
+  border-left-color: rgba(92, 103, 136, 0.6);
+  background:
+    linear-gradient(180deg, rgba(245, 247, 252, 0.98), rgba(236, 240, 248, 0.92));
+}
+
+.raw-split-block.is-filtered p {
+  color: var(--muted);
+}
+
 .live-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
