@@ -550,6 +550,11 @@ input[type="range"] {
   grid-template-columns: 1.1fr 0.9fr;
 }
 
+.observatory-grid > .answer-card {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
 .visual-card,
 .query-card {
   padding: 20px;

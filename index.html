@@ -114,8 +114,7 @@
           <section class="card workbench-panel">
             <div class="section-heading">
               <div>
-                <p class="section-kicker">Hands-on workflow</p>
-                <h2>Student workbench</h2>
+                <h2>Select the documents and then ask your question</h2>
               </div>
               <span class="status-pill" id="pipeline-status">Waiting for documents</span>
             </div>
@@ -174,96 +173,19 @@
               </div>
             </section>
 
-            <section class="note-card">
-              <p class="card-kicker">Teaching note</p>
-              <p id="simulator-note">
-                The original Python script retrieves passages. This simulator adds a browser-side grounded answer so the
-                full RAG story is easier to explain in class.
-              </p>
-            </section>
-
-            <section class="answer-card" id="answer-card" aria-live="polite">
-              <p class="card-kicker">Grounded answer</p>
-              <h3 id="answer-title">No answer yet</h3>
-              <p class="answer-copy" id="answer-copy">
-                Upload or load documents, run the pipeline, and submit a question to generate a grounded answer.
-              </p>
-              <div class="source-tags" id="answer-sources"></div>
-            </section>
           </section>
 
           <section class="card observatory-panel">
-            <div class="section-heading">
-              <div>
-                <p class="section-kicker">Pipeline observatory</p>
-                <h2>What the system is doing internally</h2>
-              </div>
-            </div>
-
-            <div class="step-grid" id="step-grid">
-              <article class="step-card" data-step="extracting">
-                <div class="step-header">
-                  <span class="step-index">1</span>
-                  <div>
-                    <p class="card-kicker">Extracting text</p>
-                    <h3>Read document content</h3>
-                  </div>
-                </div>
-                <p class="step-copy" id="step-copy-extracting">
-                  The simulator is waiting for documents before it can extract text.
-                </p>
-              </article>
-              <article class="step-card" data-step="splitting">
-                <div class="step-header">
-                  <span class="step-index">2</span>
-                  <div>
-                    <p class="card-kicker">Splitting</p>
-                    <h3>Create paragraph chunks</h3>
-                  </div>
-                </div>
-                <p class="step-copy" id="step-copy-splitting">
-                  After extraction, the text will be split into newline-based paragraphs.
-                </p>
-              </article>
-              <article class="step-card" data-step="embeddings">
-                <div class="step-header">
-                  <span class="step-index">3</span>
-                  <div>
-                    <p class="card-kicker">Embeddings</p>
-                    <h3>Map chunks into vectors</h3>
-                  </div>
-                </div>
-                <p class="step-copy" id="step-copy-embeddings">
-                  Paragraph embeddings will be pre-computed once the chunks are ready.
-                </p>
-              </article>
-              <article class="step-card" data-step="retrieval">
-                <div class="step-header">
-                  <span class="step-index">4</span>
-                  <div>
-                    <p class="card-kicker">Retrieval</p>
-                    <h3>Rank the best passages</h3>
-                  </div>
-                </div>
-                <p class="step-copy" id="step-copy-retrieval">
-                  The query will be encoded and compared with every stored paragraph embedding.
-                </p>
-              </article>
-              <article class="step-card" data-step="generation">
-                <div class="step-header">
-                  <span class="step-index">5</span>
-                  <div>
-                    <p class="card-kicker">Grounding</p>
-                    <h3>Build the final answer</h3>
-                  </div>
-                </div>
-                <p class="step-copy" id="step-copy-generation">
-                  Retrieved evidence will be summarized into one grounded teaching answer.
-                </p>
-              </article>
-            </div>
-
             <div class="observatory-grid">
+              <section class="answer-card" id="answer-card" aria-live="polite">
+                <p class="card-kicker">Grounded answer</p>
+                <h3 id="answer-title">No answer yet</h3>
+                <p class="answer-copy" id="answer-copy">
+                  Upload or load documents, run the pipeline, and submit a question to generate a grounded answer.
+                </p>
+                <div class="source-tags" id="answer-sources"></div>
+              </section>
+
               <article class="visual-card">
                 <div class="visual-header">
                   <div>

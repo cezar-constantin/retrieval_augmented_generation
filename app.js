@@ -31,7 +31,6 @@ const elements = {
   paragraphCount: document.getElementById("paragraph-count"),
   pipelineStatus: document.getElementById("pipeline-status"),
   simulatorCopy: document.getElementById("simulator-copy"),
-  simulatorNote: document.getElementById("simulator-note"),
   fileInput: document.getElementById("file-input"),
   loadDemoButton: document.getElementById("load-demo-button"),
   runPipelineButton: document.getElementById("run-pipeline-button"),
@@ -224,7 +223,7 @@ function getDocColor(index) {
   return DOC_PALETTE[index % DOC_PALETTE.length];
 }
 
-function setStepState(stepName, status, copy) {
+function setStepState(stepName, status) {
   const card = elements.stepCards.find((candidate) => candidate.dataset.step === stepName);
   if (!card) {
     return;
@@ -232,19 +231,6 @@ function setStepState(stepName, status, copy) {
 
   card.classList.toggle("is-active", status === "active");
   card.classList.toggle("is-done", status === "done");
-
-  const copyMap = {
-    extracting: elements.stepCopyExtracting,
-    splitting: elements.stepCopySplitting,
-    embeddings: elements.stepCopyEmbeddings,
-    retrieval: elements.stepCopyRetrieval,
-    generation: elements.stepCopyGeneration,
-  };
-
-  const target = copyMap[stepName];
-  if (target && copy) {
-    target.textContent = copy;
-  }
 }
 
 function renderBulletList(container, bullets) {
@@ -259,7 +245,10 @@ function renderDocumentationContent() {
   elements.heroTitle.textContent = hero.title;
   elements.heroText.textContent = hero.text;
   elements.simulatorCopy.textContent = tabs.simulator.copy;
-  elements.simulatorNote.textContent = simulatorNote;
+  const simulatorNoteNode = document.getElementById("simulator-note");
+  if (simulatorNoteNode) {
+    simulatorNoteNode.textContent = simulatorNote;
+  }
 
   const extraction = tabs.extracting;
   document.getElementById("extracting-kicker").textContent = extraction.kicker;
@@ -377,11 +366,11 @@ function markPipelineDirty(reason = "Documents changed, run the pipeline again")
   state.pipelineDirty = true;
   state.retrieval = null;
   setPipelineStatus(reason);
-  setStepState("extracting", "active", "The next run will extract fresh text from the selected files.");
-  setStepState("splitting", "", "Paragraph chunking will update after text extraction.");
-  setStepState("embeddings", "", "Embeddings will be recomputed after chunking.");
-  setStepState("retrieval", "", "The ranking is stale until the pipeline and the next query run again.");
-  setStepState("generation", "", "The grounded answer will refresh after retrieval.");
+  setStepState("extracting", "active");
+  setStepState("splitting", "");
+  setStepState("embeddings", "");
+  setStepState("retrieval", "");
+  setStepState("generation", "");
   renderRetrievalOutputs();
 }
 
@@ -953,21 +942,17 @@ async function runPipeline() {
   clearPipelineResults();
 
   try {
-    setPipelineStatus("Extracting text from documents");
-    setStepState("extracting", "active", "The simulator is reading each document and converting it into plain text.");
-    setStepState("splitting", "", "Chunking will begin after extraction finishes.");
-    setStepState("embeddings", "", "Embeddings will be pre-computed after chunking.");
-    setStepState("retrieval", "", "Retrieval starts only after a question is asked.");
-    setStepState("generation", "", "A grounded answer will be assembled from the retrieved evidence.");
+    setPipelineStatus("Processing selected documents");
+    setStepState("extracting", "active");
+    setStepState("splitting", "");
+    setStepState("embeddings", "");
+    setStepState("retrieval", "");
+    setStepState("generation", "");
 
     const extractedEntries = [];
     for (let index = 0; index < state.pendingFiles.length; index += 1) {
       const entry = state.pendingFiles[index];
-      setStepState(
-        "extracting",
-        "active",
-        `Extracting ${index + 1} of ${state.pendingFiles.length}: ${entry.name}`,
-      );
+      setStepState("extracting", "active");
       const text = await extractTextFromPendingEntry(entry);
       extractedEntries.push({
         name: entry.name,
@@ -977,18 +962,10 @@ async function runPipeline() {
       await nextFrame();
     }
 
-    setStepState(
-      "extracting",
-      "done",
-      `Extracted plain text from ${extractedEntries.length} document${extractedEntries.length === 1 ? "" : "s"}.`,
-    );
+    setStepState("extracting", "done");
 
-    setPipelineStatus("Splitting text into paragraphs");
-    setStepState(
-      "splitting",
-      "active",
-      `Applying newline-based chunking with a minimum length of ${state.minParagraphLength} characters.`,
-    );
+    setPipelineStatus("Preparing document chunks");
+    setStepState("splitting", "active");
 
     state.documents = buildDocumentsFromPendingEntries(extractedEntries);
     state.paragraphs = state.documents.flatMap((document) => document.paragraphs);
@@ -997,48 +974,24 @@ async function runPipeline() {
     updateHeroMetrics();
     await nextFrame();
 
-    setStepState(
-      "splitting",
-      "done",
-      `Created ${state.paragraphs.length} searchable paragraph chunk${state.paragraphs.length === 1 ? "" : "s"}.`,
-    );
+    setStepState("splitting", "done");
 
-    setPipelineStatus("Pre-computing embeddings");
-    setStepState(
-      "embeddings",
-      "active",
-      "Each paragraph is now being encoded into a semantic vector representation.",
-    );
+    setPipelineStatus("Preparing document representations");
+    setStepState("embeddings", "active");
 
     for (let index = 0; index < state.paragraphs.length; index += 1) {
       const paragraph = state.paragraphs[index];
       paragraph.embedding = await embedText(paragraph.text);
-      setStepState(
-        "embeddings",
-        "active",
-        `Embedded ${index + 1} of ${state.paragraphs.length} paragraph${state.paragraphs.length === 1 ? "" : "s"}.`,
-      );
+      setStepState("embeddings", "active");
       if ((index + 1) % 3 === 0 || index === state.paragraphs.length - 1) {
         renderEmbeddingGrid();
         await nextFrame();
       }
     }
 
-    setStepState(
-      "embeddings",
-      "done",
-      `Stored ${state.paragraphs.length} paragraph embedding${state.paragraphs.length === 1 ? "" : "s"} for fast retrieval.`,
-    );
-    setStepState(
-      "retrieval",
-      "",
-      "The index is ready. Ask a question to encode the query and rank the stored paragraph vectors.",
-    );
-    setStepState(
-      "generation",
-      "",
-      "After retrieval, the simulator will assemble a grounded answer from the top passages.",
-    );
+    setStepState("embeddings", "done");
+    setStepState("retrieval", "");
+    setStepState("generation", "");
 
     state.pipelineDirty = false;
     setPipelineStatus("Pipeline ready for querying");
@@ -1075,16 +1028,8 @@ function refreshRetrievalViews() {
   refreshRetrievedFlags();
   const answer = buildGroundedAnswer(state.retrieval.query, state.retrieval.topResults);
   renderAnswerState(answer.title, answer.copy, answer.sources);
-  setStepState(
-    "retrieval",
-    "done",
-    `Ranked ${state.retrieval.sortedResults.length} paragraph chunks and selected the top ${state.topK}.`,
-  );
-  setStepState(
-    "generation",
-    "done",
-    "The grounded answer now summarizes the highest-ranked evidence without leaving the retrieved context.",
-  );
+  setStepState("retrieval", "done");
+  setStepState("generation", "done");
   renderParagraphBoard();
   renderRetrievalOutputs();
 }
@@ -1105,17 +1050,9 @@ async function runRetrieval() {
 
   state.processing = true;
   updateProcessingControls();
-  setPipelineStatus("Encoding query and retrieving evidence");
-  setStepState(
-    "retrieval",
-    "active",
-    "The question is being encoded and compared with every stored paragraph embedding.",
-  );
-  setStepState(
-    "generation",
-    "active",
-    "The simulator will synthesize the highest-ranked evidence into one grounded answer.",
-  );
+    setPipelineStatus("Searching the selected documents");
+  setStepState("retrieval", "active");
+  setStepState("generation", "active");
 
   try {
     const queryEmbedding = await embedText(query);
@@ -1159,19 +1096,11 @@ function resetAll() {
   state.projectionAxes = null;
 
   setPipelineStatus("Waiting for documents");
-  setStepState("extracting", "", "The simulator is waiting for documents before it can extract text.");
-  setStepState("splitting", "", "After extraction, the text will be split into newline-based paragraphs.");
-  setStepState("embeddings", "", "Paragraph embeddings will be pre-computed once the chunks are ready.");
-  setStepState(
-    "retrieval",
-    "",
-    "The query will be encoded and compared with every stored paragraph embedding.",
-  );
-  setStepState(
-    "generation",
-    "",
-    "Retrieved evidence will be summarized into one grounded teaching answer.",
-  );
+  setStepState("extracting", "");
+  setStepState("splitting", "");
+  setStepState("embeddings", "");
+  setStepState("retrieval", "");
+  setStepState("generation", "");
 
   renderAnswerState(
     "No answer yet",
