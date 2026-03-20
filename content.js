@@ -37,7 +37,7 @@ export const documentationCopy = {
       kicker: "",
       title: "Loading and Splitting Document Texts into Paragraphs",
       copy:
-        "After extraction, the Python reference script loops through every document, splits the text by newline characters, strips whitespace, and keeps only paragraphs with at least 50 characters. In the browser simulator, PDFs are first reconstructed into lines and then grouped into paragraph candidates so the split view reflects paragraphs rather than whole pages.",
+        "After extraction, the Python reference script loops through every document, splits the text by newline characters, strips whitespace, and keeps only paragraphs with at least 50 characters. In the browser simulator, PDFs are first reconstructed into lines, grouped into paragraph candidates, merged across page breaks when a sentence clearly continues, and then cleaned so the split view reflects paragraphs rather than whole pages.",
       bullets: [],
       code: `document_texts = {name: extract_text(path) for name, path in file_paths.items()}
 

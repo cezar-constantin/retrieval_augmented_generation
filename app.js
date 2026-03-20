@@ -140,6 +140,124 @@ function splitIntoParagraphCandidates(text) {
   return candidates.map((candidate) => normalizeParagraphCandidate(candidate)).filter(Boolean);
 }
 
+function isLikelyPdfPageNumber(text) {
+  const normalized = normalizeParagraphCandidate(text);
+  return /^\d{1,4}$/.test(normalized) || /^[ivxlcdm]{1,8}$/i.test(normalized);
+}
+
+function isLikelyPdfSectionHeading(text) {
+  const normalized = normalizeParagraphCandidate(text);
+  if (!normalized || isLikelyPdfPageNumber(normalized) || normalized.length > 120) {
+    return false;
+  }
+
+  if (/^\d+(?:\.\d+)*\s+\S/.test(normalized)) {
+    return true;
+  }
+
+  return /^(abstract|introduction|conclusion|summary|overview|appendix|references)$/i.test(normalized);
+}
+
+function startsLikePdfContinuation(text) {
+  const normalized = normalizeParagraphCandidate(text);
+  if (!normalized) {
+    return false;
+  }
+
+  return (
+    /^[a-z(]/.test(normalized) ||
+    /^(and|or|but|because|since|which|where|when|while|with|within|without|for|to|of|in|on|by|from|the|this|these|those|such|process|thereby|thus|therefore)\b/i.test(
+      normalized
+    )
+  );
+}
+
+function endsLikePdfContinuation(text) {
+  const normalized = normalizeParagraphCandidate(text);
+  if (!normalized) {
+    return false;
+  }
+
+  return !/[.!?]"?$/.test(normalized) || /[:;,]$/.test(normalized);
+}
+
+function shouldMergePdfParagraphAcrossPage(previousText, nextText) {
+  const previous = normalizeParagraphCandidate(previousText);
+  const next = normalizeParagraphCandidate(nextText);
+  if (!previous || !next) {
+    return false;
+  }
+
+  if (
+    isLikelyPdfPageNumber(previous) ||
+    isLikelyPdfPageNumber(next) ||
+    isLikelyPdfSectionHeading(previous) ||
+    isLikelyPdfSectionHeading(next)
+  ) {
+    return false;
+  }
+
+  return previous.length >= 80 && next.length >= 40 && endsLikePdfContinuation(previous) && startsLikePdfContinuation(next);
+}
+
+function mergePdfParagraphs(previousText, nextText) {
+  const previous = normalizeParagraphCandidate(previousText);
+  const next = normalizeParagraphCandidate(nextText);
+  if (!previous) {
+    return next;
+  }
+  if (!next) {
+    return previous;
+  }
+
+  const separator = endsLikePdfContinuation(previous) ? " " : "\n";
+  return normalizeParagraphCandidate(`${previous}${separator}${next}`);
+}
+
+function postProcessPdfParagraphs(pageParagraphGroups) {
+  const flattened = [];
+
+  for (const pageParagraphs of pageParagraphGroups) {
+    for (const paragraph of pageParagraphs) {
+      const normalized = normalizeParagraphCandidate(paragraph);
+      if (!normalized || isLikelyPdfPageNumber(normalized)) {
+        continue;
+      }
+
+      if (
+        flattened.length &&
+        shouldMergePdfParagraphAcrossPage(flattened[flattened.length - 1], normalized)
+      ) {
+        flattened[flattened.length - 1] = mergePdfParagraphs(flattened[flattened.length - 1], normalized);
+        continue;
+      }
+
+      flattened.push(normalized);
+    }
+  }
+
+  const mergedHeadings = [];
+  for (let index = 0; index < flattened.length; index += 1) {
+    const current = flattened[index];
+    const next = flattened[index + 1];
+
+    if (
+      isLikelyPdfSectionHeading(current) &&
+      next &&
+      !isLikelyPdfSectionHeading(next) &&
+      !isLikelyPdfPageNumber(next)
+    ) {
+      mergedHeadings.push(normalizeParagraphCandidate(`${current}\n${next}`));
+      index += 1;
+      continue;
+    }
+
+    mergedHeadings.push(current);
+  }
+
+  return mergedHeadings;
+}
+
 function joinPdfTokens(tokens) {
   let text = "";
   for (const rawToken of tokens) {
@@ -1252,15 +1370,14 @@ async function extractTextFromPdf(file) {
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-  const pages = [];
+  const pageParagraphGroups = [];
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const textContent = await page.getTextContent();
     const lines = buildPdfLines(textContent.items);
-    const paragraphs = buildPdfParagraphs(lines);
-    pages.push(paragraphs.join("\n\n"));
+    pageParagraphGroups.push(buildPdfParagraphs(lines));
   }
-  return normalizeExtractedText(pages.filter(Boolean).join("\n\n"));
+  return normalizeExtractedText(postProcessPdfParagraphs(pageParagraphGroups).join("\n\n"));
 }
 
 async function extractTextFromDocx(file) {
