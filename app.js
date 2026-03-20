@@ -8,6 +8,10 @@ const state = {
   pendingFiles: [],
   documents: [],
   paragraphs: [],
+  extractionReference: {
+    type: "code",
+    documentName: null,
+  },
   processing: false,
   pipelineDirty: false,
   topK: 3,
@@ -54,6 +58,9 @@ const elements = {
   semanticMap: document.getElementById("semantic-map"),
   rankingList: document.getElementById("ranking-list"),
   extractionLiveGrid: document.getElementById("extraction-live-grid"),
+  extractingReferenceActions: document.getElementById("extracting-reference-actions"),
+  extractingReferenceTitle: document.getElementById("extracting-reference-title"),
+  extractingReferenceOutput: document.getElementById("extracting-reference-output"),
   paragraphBoard: document.getElementById("paragraph-board"),
   splittingSummaryPill: document.getElementById("splitting-summary-pill"),
   embeddingDetailsGrid: document.getElementById("embedding-details-grid"),
@@ -256,8 +263,6 @@ function renderDocumentationContent() {
   extractingKicker.hidden = !extraction.kicker;
   document.getElementById("extracting-title").textContent = extraction.title;
   document.getElementById("extracting-copy").textContent = extraction.copy;
-  renderBulletList(document.getElementById("extracting-bullets"), extraction.bullets);
-  document.getElementById("extracting-code").textContent = extraction.code;
 
   const splitting = tabs.splitting;
   document.getElementById("splitting-kicker").textContent = splitting.kicker;
@@ -384,7 +389,160 @@ function renderAnswerState(title, copy, sources = []) {
     .join("");
 }
 
+function setExtractionReference(type, documentName = null) {
+  state.extractionReference = { type, documentName };
+  renderExtractionReferencePanel();
+}
+
+function getExtractionReferenceButtons() {
+  if (state.documents.length) {
+    return state.documents.map((document) => ({
+      name: document.name,
+      sourceLabel: document.sourceLabel,
+    }));
+  }
+
+  return state.pendingFiles.map((entry) => ({
+    name: entry.name,
+    sourceLabel: entry.sourceLabel,
+  }));
+}
+
+function buildRawSplitViewer(documentName, rawCandidates, docColor, totalChars) {
+  if (!rawCandidates.length) {
+    return `<div class="empty-message">No raw splits were produced for this document.</div>`;
+  }
+
+  return `
+    <div class="reference-meta">
+      <span class="doc-stat">${escapeHtml(documentName)}</span>
+      <span class="doc-stat">${rawCandidates.length} raw split${rawCandidates.length === 1 ? "" : "s"}</span>
+      <span class="doc-stat">${totalChars.toLocaleString()} chars</span>
+    </div>
+    <div class="raw-split-stack">
+      ${rawCandidates
+        .map(
+          (split, index) => `
+            <section class="raw-split-block" style="--split-accent:${docColor};">
+              <div class="raw-split-header">
+                <span class="raw-split-index">Raw split ${index + 1}</span>
+                <span class="doc-stat">${split.length} chars</span>
+              </div>
+              <p>${escapeHtml(split)}</p>
+            </section>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderExtractionReferencePanel() {
+  if (
+    !elements.extractingReferenceActions ||
+    !elements.extractingReferenceTitle ||
+    !elements.extractingReferenceOutput
+  ) {
+    return;
+  }
+
+  const buttons = getExtractionReferenceButtons();
+  const availableNames = new Set(buttons.map((button) => button.name));
+  if (
+    state.extractionReference.type === "document" &&
+    !availableNames.has(state.extractionReference.documentName)
+  ) {
+    state.extractionReference = { type: "code", documentName: null };
+  }
+
+  elements.extractingReferenceActions.innerHTML = `
+    <button
+      type="button"
+      class="secondary-button reference-button ${state.extractionReference.type === "code" ? "is-active" : ""}"
+      data-extract-reference="code"
+    >
+      Show python code
+    </button>
+    ${buttons
+      .map(
+        (button) => `
+          <button
+            type="button"
+            class="secondary-button reference-button ${
+              state.extractionReference.type === "document" &&
+              state.extractionReference.documentName === button.name
+                ? "is-active"
+                : ""
+            }"
+            data-extract-document="${escapeHtml(button.name)}"
+          >
+            ${escapeHtml(button.name)}
+          </button>
+        `,
+      )
+      .join("")}
+  `;
+
+  elements.extractingReferenceActions
+    .querySelector('[data-extract-reference="code"]')
+    ?.addEventListener("click", () => {
+      setExtractionReference("code");
+    });
+
+  elements.extractingReferenceActions.querySelectorAll("[data-extract-document]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setExtractionReference("document", button.getAttribute("data-extract-document"));
+    });
+  });
+
+  if (state.extractionReference.type === "code") {
+    elements.extractingReferenceTitle.textContent = "Python reference";
+    elements.extractingReferenceOutput.innerHTML = `
+      <pre class="code-block reference-code-block"><code>${escapeHtml(documentationCopy.tabs.extracting.code)}</code></pre>
+    `;
+    return;
+  }
+
+  const selectedDocument = state.documents.find(
+    (document) => document.name === state.extractionReference.documentName,
+  );
+
+  if (selectedDocument) {
+    elements.extractingReferenceTitle.textContent = "Python reference";
+    elements.extractingReferenceOutput.innerHTML = buildRawSplitViewer(
+      selectedDocument.name,
+      selectedDocument.rawParagraphCandidates,
+      getDocColor(selectedDocument.docIndex),
+      selectedDocument.text.length,
+    );
+    return;
+  }
+
+  const pendingEntry = state.pendingFiles.find(
+    (entry) => entry.name === state.extractionReference.documentName,
+  );
+  elements.extractingReferenceTitle.textContent = "Python reference";
+
+  if (pendingEntry?.text) {
+    const normalizedText = normalizeExtractedText(pendingEntry.text);
+    const { rawCandidates } = splitDocumentIntoParagraphs(normalizedText, state.minParagraphLength);
+    elements.extractingReferenceOutput.innerHTML = buildRawSplitViewer(
+      pendingEntry.name,
+      rawCandidates,
+      getDocColor(state.pendingFiles.findIndex((entry) => entry.name === pendingEntry.name)),
+      normalizedText.length,
+    );
+    return;
+  }
+
+  elements.extractingReferenceOutput.innerHTML = `
+    <div class="empty-message">Run the pipeline to extract this document and inspect all raw splits.</div>
+  `;
+}
+
 function renderExtractionGrid() {
+  renderExtractionReferencePanel();
+
   if (!state.documents.length && !state.pendingFiles.length) {
     elements.extractionLiveGrid.innerHTML = `<div class="empty-message">Load documents to inspect the extracted text.</div>`;
     return;
@@ -1091,6 +1249,10 @@ function resetAll() {
   state.pendingFiles = [];
   state.documents = [];
   state.paragraphs = [];
+  state.extractionReference = {
+    type: "code",
+    documentName: null,
+  };
   state.pipelineDirty = false;
   state.retrieval = null;
   elements.fileInput.value = "";
@@ -1119,6 +1281,10 @@ function addPendingEntries(entries, autoRun = false) {
   state.pendingFiles = entries;
   state.documents = [];
   state.paragraphs = [];
+  state.extractionReference = {
+    type: "code",
+    documentName: null,
+  };
   state.retrieval = null;
   state.projectionAxes = null;
   markPipelineDirty("Documents loaded. Run the pipeline to rebuild the RAG index.");

@@ -19,12 +19,7 @@ export const documentationCopy = {
       title: "Extracting text from Documents",
       copy:
         "This part of the pipeline checks the file extension, then uses a dedicated extraction path for each supported format. Whether DOCX, PDF, TXT, or Markdown, the code turns each uploaded file into plain text that the retrieval system can search.",
-      bullets: [
-        "Purpose: turn each uploaded file into plain text that the retrieval system can search.",
-        "DOCX path: read document paragraphs and keep the non-empty ones.",
-        "PDF path: extract text page by page, then join it into one searchable text body.",
-        "Return value: the full text content of each document.",
-      ],
+      bullets: [],
       code: `def extract_text(file_path):
     """
     Extracts text from DOCX and PDF files.
