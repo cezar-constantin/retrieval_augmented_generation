@@ -113,6 +113,165 @@ function normalizeExtractedText(text) {
     .trim();
 }
 
+function normalizeParagraphCandidate(text) {
+  return String(text)
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+([,.;:!?%)\]}])/g, "$1")
+    .replace(/([(\[{])\s+/g, "$1")
+    .trim();
+}
+
+function splitIntoParagraphCandidates(text) {
+  const normalized = normalizeExtractedText(text);
+  if (!normalized) {
+    return [];
+  }
+
+  let candidates = normalized.split(/\n\s*\n+/);
+  if (candidates.length <= 1) {
+    candidates = normalized.split(/\n+/);
+  }
+
+  return candidates.map((candidate) => normalizeParagraphCandidate(candidate)).filter(Boolean);
+}
+
+function joinPdfTokens(tokens) {
+  let text = "";
+  for (const rawToken of tokens) {
+    const token = String(rawToken ?? "").replace(/\s+/g, " ").trim();
+    if (!token) {
+      continue;
+    }
+    if (!text) {
+      text = token;
+      continue;
+    }
+
+    const attachToPrevious = /^[,.;:!?%)\]}]/.test(token);
+    const attachToNext = /[(\[{/"'-]$/.test(text);
+    text += attachToPrevious || attachToNext ? token : ` ${token}`;
+  }
+
+  return text
+    .replace(/\s+([,.;:!?%)\]}])/g, "$1")
+    .replace(/([(\[{])\s+/g, "$1")
+    .trim();
+}
+
+function buildPdfLines(textItems) {
+  const lines = [];
+  let currentTokens = [];
+  let currentY = null;
+  let currentXStart = 0;
+  let currentXEnd = 0;
+  let currentHeight = 0;
+
+  const flushLine = () => {
+    const text = joinPdfTokens(currentTokens);
+    if (text) {
+      lines.push({
+        text,
+        y: currentY ?? 0,
+        xStart: currentXStart,
+        xEnd: currentXEnd,
+        height: currentHeight || 12,
+      });
+    }
+    currentTokens = [];
+    currentY = null;
+    currentXStart = 0;
+    currentXEnd = 0;
+    currentHeight = 0;
+  };
+
+  for (const item of textItems) {
+    const token = String(item?.str ?? "");
+    const hasVisibleText = token.replace(/\s+/g, "").length > 0;
+    const y = Number(item?.transform?.[5] ?? 0);
+    const x = Number(item?.transform?.[4] ?? 0);
+    const width = Math.abs(Number(item?.width ?? 0));
+    const height = Math.abs(Number(item?.height ?? item?.transform?.[3] ?? 12)) || 12;
+
+    const startsNewLine =
+      currentTokens.length &&
+      Math.abs(y - currentY) > Math.max(2, Math.min(currentHeight || height, height) * 0.45);
+
+    if (startsNewLine) {
+      flushLine();
+    }
+
+    if (hasVisibleText) {
+      if (!currentTokens.length) {
+        currentY = y;
+        currentXStart = x;
+        currentXEnd = x + width;
+        currentHeight = height;
+      } else {
+        currentXStart = Math.min(currentXStart, x);
+        currentXEnd = Math.max(currentXEnd, x + width);
+        currentHeight = Math.max(currentHeight, height);
+      }
+      currentTokens.push(token);
+    }
+
+    if (item?.hasEOL && currentTokens.length) {
+      flushLine();
+    }
+  }
+
+  flushLine();
+  return lines;
+}
+
+function buildPdfParagraphs(lines) {
+  if (!lines.length) {
+    return [];
+  }
+
+  const minXStart = Math.min(...lines.map((line) => line.xStart));
+  const averageWidth =
+    lines.reduce((sum, line) => sum + Math.max(line.xEnd - line.xStart, 1), 0) / lines.length;
+
+  const paragraphs = [];
+  let currentParagraph = lines[0].text;
+  let previousLine = lines[0];
+
+  for (let index = 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    const verticalGap = Math.abs(previousLine.y - line.y);
+    const lineHeight = Math.max(previousLine.height, line.height, 1);
+    const previousWidth = Math.max(previousLine.xEnd - previousLine.xStart, 1);
+    const lineIndented = line.xStart - minXStart > Math.max(12, line.height * 0.9);
+    const bulletLike = /^[\u2022\-*]/.test(line.text) || /^\d+[.)]\s/.test(line.text);
+    const previousShort = previousWidth < averageWidth * 0.72;
+
+    const startsNewParagraph =
+      verticalGap > lineHeight * 1.3 ||
+      bulletLike ||
+      previousShort ||
+      (lineIndented && /[.!?:]"?$/.test(previousLine.text));
+
+    if (startsNewParagraph) {
+      paragraphs.push(currentParagraph.trim());
+      currentParagraph = line.text;
+    } else if (currentParagraph.endsWith("-") && !currentParagraph.endsWith(" -")) {
+      currentParagraph = `${currentParagraph.slice(0, -1)}${line.text}`;
+    } else {
+      currentParagraph = `${currentParagraph} ${line.text}`;
+    }
+
+    previousLine = line;
+  }
+
+  paragraphs.push(currentParagraph.trim());
+  return paragraphs.map((paragraph) => normalizeParagraphCandidate(paragraph)).filter(Boolean);
+}
+
 function inferSourceLabel(name) {
   const lower = name.toLowerCase();
   if (lower.endsWith(".pdf")) return "PDF";
@@ -1097,10 +1256,11 @@ async function extractTextFromPdf(file) {
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const textContent = await page.getTextContent();
-    const pageText = textContent.items.map((item) => item.str).join(" ");
-    pages.push(pageText);
+    const lines = buildPdfLines(textContent.items);
+    const paragraphs = buildPdfParagraphs(lines);
+    pages.push(paragraphs.join("\n\n"));
   }
-  return normalizeExtractedText(pages.join("\n"));
+  return normalizeExtractedText(pages.filter(Boolean).join("\n\n"));
 }
 
 async function extractTextFromDocx(file) {
@@ -1129,10 +1289,7 @@ async function extractTextFromPendingEntry(entry) {
 }
 
 function splitDocumentIntoParagraphs(text, minLength) {
-  const rawCandidates = text
-    .split(/\n+/)
-    .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
+  const rawCandidates = splitIntoParagraphCandidates(text);
   const kept = rawCandidates.filter((paragraph) => paragraph.length >= minLength);
   return { rawCandidates, kept };
 }
