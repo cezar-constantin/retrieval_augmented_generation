@@ -165,7 +165,7 @@
                 id="query-input"
                 class="query-input"
                 rows="4"
-                placeholder="Example: How is backtesting used in monitoring?"
+                placeholder="Example: How is backtesting used in validation of a rating model?"
               ></textarea>
               <div class="suggestion-row" id="suggestion-row" aria-label="Suggested questions"></div>
               <div class="button-row">
@@ -294,15 +294,6 @@
           </div>
         </section>
 
-        <section class="card live-card embedding-explorer-card">
-          <div class="embedding-explorer">
-            <div class="embedding-stage-list" id="embedding-details-grid"></div>
-            <div class="embedding-stage-display" id="embedding-stage-display">
-              <div class="empty-message">Run the pipeline and select a paragraph from Embedding previews to inspect its embedding journey.</div>
-            </div>
-          </div>
-        </section>
-
         <section class="card live-card">
           <div class="section-heading">
             <div>
@@ -312,6 +303,15 @@
           </div>
           <div class="embedding-grid" id="embedding-grid">
             <div class="empty-message">Run the pipeline to preview paragraph embeddings.</div>
+          </div>
+        </section>
+
+        <section class="card live-card embedding-explorer-card">
+          <div class="embedding-explorer">
+            <div class="embedding-stage-list" id="embedding-details-grid"></div>
+            <div class="embedding-stage-display" id="embedding-stage-display">
+              <div class="empty-message">Run the pipeline and select a paragraph from Embedding previews to inspect its embedding journey.</div>
+            </div>
           </div>
         </section>
       </section>

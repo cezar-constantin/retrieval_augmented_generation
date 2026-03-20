@@ -86,13 +86,13 @@ for doc_name, text in document_texts.items():
           key: "contrastive",
           title: "Contrastive Learning",
           text:
-            "See how sentence-level evidence nudges the paragraph vector during contrastive learning and which sentences matter most.",
+            "See how sentence-level evidence nudges a teaching-stage paragraph vector during contrastive learning and which sentences matter most.",
         },
         {
           key: "semantic-space",
           title: "Semantic Space",
           text:
-            "Explore the final paragraph vector after the pipeline and see where it sits relative to the other paragraph embeddings.",
+            "Explore the final paragraph vector used for retrieval and see where it sits relative to the other paragraph embeddings.",
         },
       ],
       code: `model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -163,8 +163,7 @@ Documentation should explain when recalibration is allowed, who approves it, and
 ];
 
 export const suggestedQuestions = [
-  "How is backtesting used in monitoring?",
-  "Why are short paragraphs filtered out before retrieval?",
-  "What does the embedding model do in this pipeline?",
-  "When would recalibration be preferred to redevelopment?",
+  "How is backtesting used in validation of a rating model?",
+  "How is the accuracy ratio of the model defined?",
+  "How are the ratings defined?",
 ];

@@ -904,13 +904,14 @@ input[type="range"] {
 
 .embedding-explorer {
   display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 20px;
   align-items: start;
 }
 
 .embedding-stage-list {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -967,6 +968,12 @@ input[type="range"] {
 .embedding-stage-shell {
   display: grid;
   gap: 18px;
+}
+
+.embedding-stage-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .embedding-stage-header {
@@ -1410,6 +1417,10 @@ input[type="range"] {
   .step-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .embedding-stage-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -1548,6 +1559,10 @@ input[type="range"] {
     grid-template-columns: repeat(16, minmax(0, 1fr));
   }
 
+  .embedding-stage-summary {
+    grid-template-columns: 1fr;
+  }
+
   .detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1659,6 +1674,10 @@ input[type="range"] {
   .embedding-preview,
   .embedding-preview.is-large {
     grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .embedding-stage-list {
+    grid-template-columns: 1fr;
   }
 
   .embedding-bar,

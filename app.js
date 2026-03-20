@@ -1883,6 +1883,16 @@ function renderEmbeddingStageDisplay(selectedParagraph, detail, teachingData) {
         <span class="doc-stat">${selectedParagraph.charCount} chars</span>
       </div>
       <p class="topic-copy">${escapeHtml(summarizeText(selectedParagraph.text, 240))}</p>
+      <div class="embedding-stage-summary">
+        <div class="embedding-stage-note">
+          <p class="card-kicker">What the bars mean</p>
+          <p>Whenever the vector preview is shown as bars, each bar represents one sampled embedding dimension. Taller bars mean a stronger normalized value in that dimension.</p>
+        </div>
+        <div class="embedding-stage-note">
+          <p class="card-kicker">Why the final vector differs</p>
+          <p>The contrastive view shows a teaching-stage vector after sentence-level alignment. The final paragraph vector uses the stored embedding that retrieval actually indexes, so it can differ from the contrastive preview.</p>
+        </div>
+      </div>
       <div class="embedding-stage-workspace">
         <div class="embedding-stage-visual">${visualHtml}</div>
         <aside class="embedding-stage-aside">${asideHtml}</aside>
