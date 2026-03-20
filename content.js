@@ -62,7 +62,7 @@ for doc_name, text in document_texts.items():
           key: "tokenization",
           title: "Tokenization",
           text:
-            "Inspect how the selected paragraph is split into tokens and where each token lands in a teaching-focused 2D projection.",
+            "Inspect how the selected paragraph is split into tokens and where each token lands in a teaching-focused 3D projection.",
         },
         {
           key: "transformer",
