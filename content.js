@@ -99,18 +99,13 @@ for doc_name, text in document_texts.items():
 paragraph_embeddings = model.encode(paragraphs, convert_to_tensor=True)`,
     },
     retrieval: {
-      kicker: "8. Defining the Retrieval Function",
+      kicker: "",
       title: "Defining the Retrieval Function",
       copy:
         "Retrieval begins by encoding the user query with the same model, computing cosine similarity against every stored paragraph embedding, sorting the scores, and then returning the top results with source metadata.",
-      bullets: [
-        "Query encoding: the question is mapped into the same vector space as the paragraphs.",
-        "Cosine similarity: higher values mean the query and the paragraph point in a more similar semantic direction.",
-        "Ranking: the scores are sorted in descending order to find the best matches.",
-        "Result construction: each returned item includes the source document, paragraph text, and similarity score.",
-      ],
-      formulaTitle: "Similarity formula",
-      formula: "score = cosine(query_embedding, paragraph_embedding)",
+      bullets: [],
+      formulaTitle: "",
+      formula: "",
       code: `def retrieve_answer(query, top_k=1):
     query_embedding = model.encode(query, convert_to_tensor=True)
     scores = util.pytorch_cos_sim(query_embedding, paragraph_embeddings)[0]

@@ -1239,7 +1239,120 @@ input[type="range"] {
 }
 
 .retrieval-grid {
-  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.22fr);
+  align-items: start;
+}
+
+.retrieval-sidebar {
+  display: grid;
+  gap: 14px;
+}
+
+.retrieval-results {
+  grid-template-columns: 1fr;
+}
+
+.retrieval-chart-panel {
+  min-height: 620px;
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(163, 180, 235, 0.24);
+  background:
+    radial-gradient(circle at top right, rgba(79, 185, 209, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 246, 255, 0.94));
+}
+
+.retrieval-chart-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.retrieval-chart-plot {
+  width: 100%;
+  height: auto;
+}
+
+.retrieval-chart-point {
+  fill: var(--retrieval-point, rgba(92, 103, 136, 0.28));
+  opacity: 0.24;
+  stroke: rgba(255, 255, 255, 0.88);
+  stroke-width: 2;
+}
+
+.retrieval-chart-point.is-top {
+  opacity: 1;
+  stroke-width: 3.5;
+}
+
+.retrieval-chart-node {
+  cursor: pointer;
+}
+
+.retrieval-chart-hover {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.retrieval-chart-node:hover .retrieval-chart-hover {
+  opacity: 1;
+}
+
+.retrieval-chart-link {
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.retrieval-chart-link.is-chunk {
+  stroke: rgba(255, 141, 56, 0.86);
+}
+
+.retrieval-chart-link.is-query {
+  stroke: rgba(23, 92, 230, 0.52);
+  stroke-dasharray: 7 8;
+}
+
+.retrieval-chart-cosine {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-anchor: middle;
+  fill: var(--blue-deep);
+}
+
+.retrieval-origin-point {
+  fill: rgba(92, 103, 136, 0.78);
+  stroke: rgba(255, 255, 255, 0.94);
+  stroke-width: 3;
+}
+
+.retrieval-origin-label,
+.retrieval-query-label,
+.retrieval-chart-rank {
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.retrieval-origin-label,
+.retrieval-query-label {
+  font-size: 0.8rem;
+  fill: var(--blue-deep);
+}
+
+.retrieval-query-point {
+  fill: var(--orange);
+  stroke: rgba(255, 255, 255, 0.96);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 12px rgba(255, 141, 56, 0.34));
+}
+
+.retrieval-chart-rank {
+  font-size: 0.8rem;
+  fill: rgba(255, 255, 255, 0.96);
+  pointer-events: none;
+}
+
+.retrieval-chart-legend {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .retrieval-card {

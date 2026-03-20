@@ -331,10 +331,6 @@
               <h2 id="retrieval-title"></h2>
               <p class="topic-copy" id="retrieval-copy"></p>
               <div class="bullet-list" id="retrieval-bullets"></div>
-              <div class="formula-card">
-                <p class="card-kicker" id="retrieval-formula-title"></p>
-                <h3 id="retrieval-formula"></h3>
-              </div>
             </div>
             <article class="code-card">
               <p class="card-kicker">Python reference</p>
@@ -347,19 +343,24 @@
           <div class="section-heading">
             <div>
               <p class="section-kicker">Live retrieval</p>
-              <h2>Similarity scores and supporting passages</h2>
+              <h2>Similarity map and supporting passages</h2>
             </div>
           </div>
           <div class="retrieval-grid">
-            <div class="query-card">
-              <p class="card-kicker">Current query</p>
-              <h3 id="retrieval-query-title">No query yet</h3>
-              <p id="retrieval-query-copy" class="topic-copy">
-                Submit a question to see how the query embedding is compared against every paragraph.
-              </p>
+            <div class="retrieval-sidebar">
+              <div class="query-card">
+                <p class="card-kicker">Current query</p>
+                <h3 id="retrieval-query-title">No query yet</h3>
+                <p id="retrieval-query-copy" class="topic-copy">
+                  Submit a question to see how the query embedding is compared against every paragraph.
+                </p>
+              </div>
+              <div class="retrieval-results" id="retrieval-results">
+                <div class="empty-message">Retrieved passages will appear here after a query.</div>
+              </div>
             </div>
-            <div class="retrieval-results" id="retrieval-results">
-              <div class="empty-message">Retrieved passages will appear here after a query.</div>
+            <div class="retrieval-chart-panel" id="retrieval-chart-panel">
+              <div class="empty-message">Run a query to draw the retrieval map.</div>
             </div>
           </div>
         </section>

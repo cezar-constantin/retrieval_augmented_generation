@@ -123,6 +123,7 @@ const elements = {
   retrievalQueryTitle: document.getElementById("retrieval-query-title"),
   retrievalQueryCopy: document.getElementById("retrieval-query-copy"),
   retrievalResults: document.getElementById("retrieval-results"),
+  retrievalChartPanel: document.getElementById("retrieval-chart-panel"),
   tabButtons: Array.from(document.querySelectorAll(".tab-button")),
   tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
 };
@@ -937,12 +938,14 @@ function renderDocumentationContent() {
   document.getElementById("embeddings-code").textContent = embeddings.code;
 
   const retrieval = tabs.retrieval;
-  document.getElementById("retrieval-kicker").textContent = retrieval.kicker;
+  const retrievalKicker = document.getElementById("retrieval-kicker");
+  retrievalKicker.textContent = retrieval.kicker;
+  retrievalKicker.hidden = !retrieval.kicker;
   document.getElementById("retrieval-title").textContent = retrieval.title;
   document.getElementById("retrieval-copy").textContent = retrieval.copy;
-  renderBulletList(document.getElementById("retrieval-bullets"), retrieval.bullets);
-  document.getElementById("retrieval-formula-title").textContent = retrieval.formulaTitle;
-  document.getElementById("retrieval-formula").textContent = retrieval.formula;
+  const retrievalBullets = document.getElementById("retrieval-bullets");
+  renderBulletList(retrievalBullets, retrieval.bullets);
+  retrievalBullets.hidden = !retrieval.bullets.length;
   document.getElementById("retrieval-code").textContent = retrieval.code;
 }
 
@@ -2072,6 +2075,127 @@ function renderRankingList() {
     .join("");
 }
 
+function buildRetrievalChartMarkup() {
+  if (
+    !state.retrieval?.topResults.length ||
+    !hasEmbeddingVector(state.retrieval.queryEmbedding) ||
+    !elements.retrievalChartPanel
+  ) {
+    return `<div class="empty-message">Run a query to draw the retrieval map.</div>`;
+  }
+
+  const retrievedIds = new Set(state.retrieval.topResults.map((result) => result.id));
+  const points = state.paragraphs
+    .filter((paragraph) => hasEmbeddingVector(paragraph.embedding))
+    .map((paragraph) => ({
+      ...paragraph,
+      projection: projectVector(paragraph.embedding),
+      isRetrieved: retrievedIds.has(paragraph.id),
+      isQuery: false,
+      isOrigin: false,
+    }));
+
+  points.push({
+    id: "retrieval-query-point",
+    projection: projectVector(state.retrieval.queryEmbedding),
+    isQuery: true,
+    isOrigin: false,
+  });
+  points.push({
+    id: "retrieval-origin-point",
+    projection: { x: 0, y: 0 },
+    isQuery: false,
+    isOrigin: true,
+  });
+
+  const width = 860;
+  const height = 520;
+  const laidOutPoints = layoutScatterPoints(points, width, height);
+  const queryPoint = laidOutPoints.find((point) => point.isQuery);
+  const originPoint = laidOutPoints.find((point) => point.isOrigin);
+  if (!queryPoint || !originPoint) {
+    return `<div class="empty-message">Run a query to draw the retrieval map.</div>`;
+  }
+  const paragraphPoints = laidOutPoints.filter((point) => !point.isQuery && !point.isOrigin);
+  const retrievedPoints = paragraphPoints.filter((point) => point.isRetrieved);
+
+  return `
+    <div class="retrieval-chart-shell">
+      <svg class="retrieval-chart-plot" viewBox="0 0 ${width} ${height}" aria-label="Retrieval similarity map">
+        ${buildScatterGuides(width, height)}
+        ${paragraphPoints
+          .filter((point) => !point.isRetrieved)
+          .map(
+            (point) => `
+              <circle
+                cx="${point.plotX}"
+                cy="${point.plotY}"
+                r="6"
+                class="retrieval-chart-point"
+                style="--retrieval-point:${getDocColor(point.docIndex)};"
+              >
+                <title>${escapeHtml(`${point.docName} - Chunk ${point.indexInDoc + 1}`)}</title>
+              </circle>
+            `,
+          )
+          .join("")}
+        ${retrievedPoints
+          .map((point) => {
+            const result = state.retrieval.topResults.find((candidate) => candidate.id === point.id);
+            const rank = state.retrieval.topResults.findIndex((candidate) => candidate.id === point.id) + 1;
+            const cosineLabel = `${Math.round(result.score * 100)}%`;
+            const cosineX = (point.plotX + queryPoint.plotX) / 2;
+            const cosineY = Math.min(point.plotY, queryPoint.plotY) - 18;
+            return `
+              <g class="retrieval-chart-node">
+                <g class="retrieval-chart-hover">
+                  <line
+                    x1="${point.plotX}"
+                    y1="${point.plotY}"
+                    x2="${originPoint.plotX}"
+                    y2="${originPoint.plotY}"
+                    class="retrieval-chart-link is-chunk"
+                  ></line>
+                  <line
+                    x1="${queryPoint.plotX}"
+                    y1="${queryPoint.plotY}"
+                    x2="${originPoint.plotX}"
+                    y2="${originPoint.plotY}"
+                    class="retrieval-chart-link is-query"
+                  ></line>
+                  <text x="${cosineX}" y="${cosineY}" class="retrieval-chart-cosine">cosine ${cosineLabel}</text>
+                </g>
+                <circle
+                  cx="${point.plotX}"
+                  cy="${point.plotY}"
+                  r="12"
+                  class="retrieval-chart-point is-top"
+                  style="--retrieval-point:${getDocColor(point.docIndex)};"
+                >
+                  <title>${escapeHtml(`${result.docName} - Chunk ${result.indexInDoc + 1} - cosine ${cosineLabel}`)}</title>
+                </circle>
+                <text x="${point.plotX}" y="${point.plotY + 4}" class="retrieval-chart-rank">${rank}</text>
+              </g>
+            `;
+          })
+          .join("")}
+        <g class="retrieval-chart-origin">
+          <circle cx="${originPoint.plotX}" cy="${originPoint.plotY}" r="8" class="retrieval-origin-point"></circle>
+          <text x="${originPoint.plotX}" y="${originPoint.plotY + 24}" class="retrieval-origin-label">Origin</text>
+        </g>
+        <g class="retrieval-chart-query">
+          <circle cx="${queryPoint.plotX}" cy="${queryPoint.plotY}" r="14" class="retrieval-query-point"></circle>
+          <text x="${queryPoint.plotX}" y="${queryPoint.plotY + 4}" class="retrieval-chart-rank">Q</text>
+          <text x="${queryPoint.plotX}" y="${queryPoint.plotY + 34}" class="retrieval-query-label">Query</text>
+        </g>
+      </svg>
+      <div class="retrieval-chart-legend">
+        <span class="doc-stat">Hover a highlighted chunk to reveal the cosine value and its relation to the query.</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderRetrievalOutputs() {
   renderRankingList();
   renderSemanticMap();
@@ -2082,6 +2206,9 @@ function renderRetrievalOutputs() {
     elements.retrievalQueryCopy.textContent =
       "Submit a question to see how the query embedding is compared against every paragraph.";
     elements.retrievalResults.innerHTML = `<div class="empty-message">Retrieved passages will appear here after a query.</div>`;
+    if (elements.retrievalChartPanel) {
+      elements.retrievalChartPanel.innerHTML = `<div class="empty-message">Run a query to draw the retrieval map.</div>`;
+    }
     return;
   }
 
@@ -2109,6 +2236,10 @@ function renderRetrievalOutputs() {
       `;
     })
     .join("");
+
+  if (elements.retrievalChartPanel) {
+    elements.retrievalChartPanel.innerHTML = buildRetrievalChartMarkup();
+  }
 }
 
 function refreshRetrievedFlags() {
