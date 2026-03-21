@@ -8,6 +8,15 @@
       name="description"
       content="Interactive RAG teaching simulator with document upload, paragraph chunking, embeddings, retrieval ranking, and grounded answer generation."
     />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5NWC8CSNMW"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-5NWC8CSNMW");
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -27,19 +36,24 @@
             pipeline visually.
           </p>
         </div>
-        <div class="hero-badges">
-          <article class="metric-chip">
-            <span class="metric-label">Encoder</span>
-            <strong id="encoder-status">Waiting to load</strong>
-          </article>
-          <article class="metric-chip">
-            <span class="metric-label">Documents</span>
-            <strong id="document-count">0 loaded</strong>
-          </article>
-          <article class="metric-chip">
-            <span class="metric-label">Paragraphs</span>
-            <strong id="paragraph-count">0 indexed</strong>
-          </article>
+        <div class="hero-side">
+          <div class="hero-badges">
+            <article class="metric-chip">
+              <span class="metric-label">Encoder</span>
+              <strong id="encoder-status">Waiting to load</strong>
+            </article>
+            <article class="metric-chip">
+              <span class="metric-label">Documents</span>
+              <strong id="document-count">0 loaded</strong>
+            </article>
+            <article class="metric-chip">
+              <span class="metric-label">Paragraphs</span>
+              <strong id="paragraph-count">0 indexed</strong>
+            </article>
+          </div>
+          <aside class="hero-qr-card" aria-label="QR code for the live simulator">
+            <img class="hero-qr-image" src="./assets/hero-qr.png" alt="QR code linking to the live RAG simulator" />
+          </aside>
         </div>
       </header>
 
