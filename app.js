@@ -9,6 +9,7 @@ const TEACHING_TOKEN_LIMIT = 28;
 const MOBILE_CHART_BREAKPOINT = 768;
 const MOBILE_BACKGROUND_POINT_LIMIT = 20;
 const MOBILE_TOKEN_POINT_LIMIT = 14;
+const CONTACT_FORM_ENDPOINT = "https://formsubmit.co/ajax/cezar.chirila@helvetic-ai-compass.ch";
 const CONTENT_STOPWORDS = new Set([
   "the",
   "and",
@@ -130,6 +131,10 @@ const elements = {
   retrievalQueryCopy: document.getElementById("retrieval-query-copy"),
   retrievalResults: document.getElementById("retrieval-results"),
   retrievalChartPanel: document.getElementById("retrieval-chart-panel"),
+  contactForm: document.getElementById("contact-form"),
+  contactFormUrl: document.getElementById("contact-form-url"),
+  contactStatus: document.getElementById("contact-status"),
+  contactSubmitButton: document.getElementById("contact-submit-button"),
   tabButtons: Array.from(document.querySelectorAll(".tab-button")),
   tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
 };
@@ -2829,6 +2834,85 @@ function refreshViewportMode() {
   renderRetrievalOutputs();
 }
 
+function setContactStatus(message, stateName = "idle") {
+  if (!elements.contactStatus) {
+    return;
+  }
+
+  elements.contactStatus.textContent = message;
+  elements.contactStatus.dataset.state = stateName;
+}
+
+async function handleContactSubmit(event) {
+  event.preventDefault();
+
+  if (!elements.contactForm) {
+    return;
+  }
+
+  if (typeof elements.contactForm.reportValidity === "function" && !elements.contactForm.reportValidity()) {
+    return;
+  }
+
+  const formData = new FormData(elements.contactForm);
+  formData.set("_subject", "RAG simulator inquiry");
+  formData.set("_template", "table");
+  formData.set("_url", window.location.href);
+
+  const replyTo = String(formData.get("email") || "").trim();
+  if (replyTo) {
+    formData.set("_replyto", replyTo);
+  }
+
+  if (elements.contactSubmitButton) {
+    elements.contactSubmitButton.disabled = true;
+  }
+  elements.contactForm.setAttribute("aria-busy", "true");
+  setContactStatus("Sending your message directly from the simulator...", "sending");
+
+  try {
+    const response = await fetch(CONTACT_FORM_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+      body: formData,
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.success === false) {
+      throw new Error(payload?.message || "Contact form request failed.");
+    }
+
+    elements.contactForm.reset();
+    if (elements.contactFormUrl) {
+      elements.contactFormUrl.value = window.location.href;
+    }
+    setContactStatus(
+      "Your question was sent successfully. We will answer at the contact details you provided.",
+      "success",
+    );
+
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "contact_form_submit", {
+        form_name: "rag_simulator_contact",
+        destination: "cezar.chirila@helvetic-ai-compass.ch",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    setContactStatus(
+      "The form could not send your message right now. You can still contact cezar.chirila@helvetic-ai-compass.ch and find more details on www.helvetic-ai-compass.ch.",
+      "error",
+    );
+  } finally {
+    elements.contactForm.removeAttribute("aria-busy");
+    if (elements.contactSubmitButton) {
+      elements.contactSubmitButton.disabled = false;
+    }
+  }
+}
+
 function attachEvents() {
   elements.fileInput.addEventListener("change", handleFileSelection);
   elements.loadDemoButton.addEventListener("click", loadDemoSet);
@@ -2857,6 +2941,10 @@ function attachEvents() {
     window.clearTimeout(responsiveRefreshTimer);
     responsiveRefreshTimer = window.setTimeout(refreshViewportMode, 120);
   });
+
+  elements.contactForm?.addEventListener("submit", (event) => {
+    void handleContactSubmit(event);
+  });
 }
 
 function initialize() {
@@ -2865,6 +2953,10 @@ function initialize() {
   setupTabs();
   setupSuggestions();
   attachEvents();
+  if (elements.contactFormUrl) {
+    elements.contactFormUrl.value = window.location.href;
+  }
+  setContactStatus("Your message will be sent to cezar.chirila@helvetic-ai-compass.ch.", "idle");
   resetAll();
 }
 

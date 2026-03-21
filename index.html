@@ -379,6 +379,81 @@
           </div>
         </section>
       </section>
+
+      <section class="card contact-panel" id="contact-panel" aria-labelledby="contact-title">
+        <div class="contact-layout">
+          <div class="contact-copy">
+            <div>
+              <p class="section-kicker">Contact</p>
+              <h2 id="contact-title">Ask a question directly from the simulator</h2>
+            </div>
+            <p class="helper-copy">
+              Use this form to send a message directly to <strong>cezar.chirila@helvetic-ai-compass.ch</strong>
+              without leaving the simulator. For more information, visit
+              <a href="https://www.helvetic-ai-compass.ch" target="_blank" rel="noreferrer">www.helvetic-ai-compass.ch</a>.
+            </p>
+            <p class="contact-note">
+              Add your name, company, email address, and question below. The message is submitted directly from this
+              page, so no extra mail application needs to open.
+            </p>
+          </div>
+
+          <form
+            id="contact-form"
+            class="contact-form"
+            action="https://formsubmit.co/cezar.chirila@helvetic-ai-compass.ch"
+            method="POST"
+          >
+            <input type="hidden" name="_subject" value="RAG simulator inquiry" />
+            <input type="hidden" name="_template" value="table" />
+            <input type="hidden" name="_url" id="contact-form-url" value="" />
+            <div class="contact-honeypot" aria-hidden="true">
+              <label for="contact-company-site">Website</label>
+              <input id="contact-company-site" type="text" name="_honey" tabindex="-1" autocomplete="off" />
+            </div>
+
+            <div class="contact-grid">
+              <div class="contact-field">
+                <label for="contact-name">Full name</label>
+                <input id="contact-name" type="text" name="name" autocomplete="name" required />
+              </div>
+
+              <div class="contact-field">
+                <label for="contact-company">Company</label>
+                <input id="contact-company" type="text" name="company" autocomplete="organization" />
+              </div>
+
+              <div class="contact-field">
+                <label for="contact-email">Email address</label>
+                <input id="contact-email" type="email" name="email" autocomplete="email" required />
+              </div>
+
+              <div class="contact-field">
+                <label for="contact-phone">Phone or role</label>
+                <input id="contact-phone" type="text" name="phone_or_role" autocomplete="tel" />
+              </div>
+
+              <div class="contact-field contact-field-full">
+                <label for="contact-question">Question</label>
+                <textarea
+                  id="contact-question"
+                  name="question"
+                  rows="6"
+                  placeholder="Write your question, context, or teaching use case here."
+                  required
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="contact-actions">
+              <button class="primary-button" id="contact-submit-button" type="submit">Send question</button>
+              <p class="contact-status" id="contact-status" aria-live="polite">
+                Your message will be sent to cezar.chirila@helvetic-ai-compass.ch.
+              </p>
+            </div>
+          </form>
+        </div>
+      </section>
     </div>
 
     <script type="module" src="./app.js"></script>

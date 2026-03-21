@@ -90,7 +90,8 @@ body::before {
 .workbench-panel,
 .observatory-panel,
 .topic-card,
-.live-card {
+.live-card,
+.contact-panel {
   padding: 28px;
 }
 
@@ -483,6 +484,122 @@ input[type="range"] {
 .query-input:focus {
   outline: 2px solid rgba(79, 185, 209, 0.34);
   border-color: rgba(79, 185, 209, 0.52);
+}
+
+.contact-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.84fr) minmax(0, 1.16fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.contact-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.contact-copy h2 {
+  margin-top: 8px;
+  font-size: clamp(1.8rem, 2vw, 2.4rem);
+}
+
+.contact-copy p,
+.contact-status {
+  margin: 0;
+}
+
+.contact-copy a {
+  color: var(--blue-deep);
+  font-weight: 700;
+}
+
+.contact-note {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(163, 180, 235, 0.24);
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.contact-form {
+  position: relative;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(237, 243, 255, 0.88));
+  border: 1px solid rgba(163, 180, 235, 0.28);
+  display: grid;
+  gap: 18px;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.contact-field,
+.contact-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.contact-field-full {
+  grid-column: 1 / -1;
+}
+
+.contact-field label {
+  color: var(--blue-deep);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.contact-field input,
+.contact-field textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(163, 180, 235, 0.34);
+  background: rgba(255, 255, 255, 0.94);
+  font: inherit;
+  color: var(--ink);
+}
+
+.contact-field textarea {
+  min-height: 156px;
+  resize: vertical;
+}
+
+.contact-field input:focus,
+.contact-field textarea:focus {
+  outline: 2px solid rgba(79, 185, 209, 0.34);
+  border-color: rgba(79, 185, 209, 0.52);
+}
+
+.contact-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.contact-status {
+  min-height: 1.5em;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.contact-status[data-state="sending"] {
+  color: var(--blue-deep);
+}
+
+.contact-status[data-state="success"] {
+  color: var(--lime-deep);
+}
+
+.contact-status[data-state="error"] {
+  color: var(--magenta-deep);
 }
 
 .suggestion-row,
@@ -1487,7 +1604,8 @@ input[type="range"] {
   .workbench-panel,
   .observatory-panel,
   .topic-card,
-  .live-card {
+  .live-card,
+  .contact-panel {
     padding: 22px;
   }
 
@@ -1550,7 +1668,8 @@ input[type="range"] {
 
   .control-grid,
   .observatory-grid,
-  .retrieval-grid {
+  .retrieval-grid,
+  .contact-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1561,6 +1680,10 @@ input[type="range"] {
   .button-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contact-grid {
+    grid-template-columns: 1fr;
   }
 
   .primary-button,
@@ -1636,7 +1759,8 @@ input[type="range"] {
   .workbench-panel,
   .observatory-panel,
   .topic-card,
-  .live-card {
+  .live-card,
+  .contact-panel {
     padding: 16px;
   }
 
