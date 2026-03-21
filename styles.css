@@ -95,6 +95,10 @@ body::before {
   padding: 28px;
 }
 
+.disclaimer-panel {
+  padding: 24px 28px;
+}
+
 .hero {
   display: flex;
   gap: 24px;
@@ -583,6 +587,33 @@ input[type="range"] {
 
 .contact-status[data-state="error"] {
   color: var(--magenta-deep);
+}
+
+.disclaimer-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.62fr) minmax(0, 1.38fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.disclaimer-layout h2 {
+  margin-top: 8px;
+  font-size: clamp(1.55rem, 1.8vw, 2rem);
+}
+
+.disclaimer-copy {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(237, 243, 255, 0.88));
+  border: 1px solid rgba(163, 180, 235, 0.28);
+}
+
+.disclaimer-copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .suggestion-row,
@@ -1592,6 +1623,10 @@ input[type="range"] {
     padding: 22px;
   }
 
+  .disclaimer-panel {
+    padding: 20px 22px;
+  }
+
   .hero {
     flex-direction: column;
     align-items: stretch;
@@ -1652,7 +1687,8 @@ input[type="range"] {
   .control-grid,
   .observatory-grid,
   .retrieval-grid,
-  .contact-layout {
+  .contact-layout,
+  .disclaimer-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1744,6 +1780,10 @@ input[type="range"] {
   .topic-card,
   .live-card,
   .contact-panel {
+    padding: 16px;
+  }
+
+  .disclaimer-panel {
     padding: 16px;
   }
 
