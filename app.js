@@ -2956,7 +2956,7 @@ function initialize() {
   if (elements.contactFormUrl) {
     elements.contactFormUrl.value = window.location.href;
   }
-  setContactStatus("Your message will be sent to cezar.chirila@helvetic-ai-compass.ch.", "idle");
+  setContactStatus("", "idle");
   resetAll();
 }
 

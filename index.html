@@ -388,13 +388,8 @@
               <h2 id="contact-title">Ask a question directly from the simulator</h2>
             </div>
             <p class="helper-copy">
-              Use this form to send a message directly to <strong>cezar.chirila@helvetic-ai-compass.ch</strong>
-              without leaving the simulator. For more information, visit
+              Contact: <strong>cezar.chirila@helvetic-ai-compass.ch</strong>. For more information, visit
               <a href="https://www.helvetic-ai-compass.ch" target="_blank" rel="noreferrer">www.helvetic-ai-compass.ch</a>.
-            </p>
-            <p class="contact-note">
-              Add your name, company, email address, and question below. The message is submitted directly from this
-              page, so no extra mail application needs to open.
             </p>
           </div>
 
@@ -407,10 +402,6 @@
             <input type="hidden" name="_subject" value="RAG simulator inquiry" />
             <input type="hidden" name="_template" value="table" />
             <input type="hidden" name="_url" id="contact-form-url" value="" />
-            <div class="contact-honeypot" aria-hidden="true">
-              <label for="contact-company-site">Website</label>
-              <input id="contact-company-site" type="text" name="_honey" tabindex="-1" autocomplete="off" />
-            </div>
 
             <div class="contact-grid">
               <div class="contact-field">
@@ -428,11 +419,6 @@
                 <input id="contact-email" type="email" name="email" autocomplete="email" required />
               </div>
 
-              <div class="contact-field">
-                <label for="contact-phone">Phone or role</label>
-                <input id="contact-phone" type="text" name="phone_or_role" autocomplete="tel" />
-              </div>
-
               <div class="contact-field contact-field-full">
                 <label for="contact-question">Question</label>
                 <textarea
@@ -447,9 +433,7 @@
 
             <div class="contact-actions">
               <button class="primary-button" id="contact-submit-button" type="submit">Send question</button>
-              <p class="contact-status" id="contact-status" aria-live="polite">
-                Your message will be sent to cezar.chirila@helvetic-ai-compass.ch.
-              </p>
+              <p class="contact-status" id="contact-status" aria-live="polite"></p>
             </div>
           </form>
         </div>
