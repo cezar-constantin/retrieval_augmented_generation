@@ -2902,7 +2902,7 @@ async function handleContactSubmit(event) {
   } catch (error) {
     console.error(error);
     setContactStatus(
-      "The form could not send your message right now. You can still contact cezar.chirila@helvetic-ai-compass.ch and find more details on www.helvetic-ai-compass.ch.",
+      "The form could not send your message right now. You can still contact cezar.chirila@helvetic-ai-compass.ch and find more details on https://helvetic-ai-compass.ch/.",
       "error",
     );
   } finally {
