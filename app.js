@@ -9,7 +9,7 @@ const TEACHING_TOKEN_LIMIT = 28;
 const MOBILE_CHART_BREAKPOINT = 768;
 const MOBILE_BACKGROUND_POINT_LIMIT = 20;
 const MOBILE_TOKEN_POINT_LIMIT = 14;
-const CONTACT_FORM_ENDPOINT = "https://formsubmit.co/ajax/cezar.chirila@helvetic-ai-compass.ch";
+const CONTACT_FORM_ENDPOINT = "https://formsubmit.co/ajax/contact@cezar-chirila.com";
 const CONTENT_STOPWORDS = new Set([
   "the",
   "and",
@@ -2896,13 +2896,13 @@ async function handleContactSubmit(event) {
     if (typeof window.gtag === "function") {
       window.gtag("event", "contact_form_submit", {
         form_name: "rag_simulator_contact",
-        destination: "cezar.chirila@helvetic-ai-compass.ch",
+        destination: "contact@cezar-chirila.com",
       });
     }
   } catch (error) {
     console.error(error);
     setContactStatus(
-      "The form could not send your message right now. You can still contact cezar.chirila@helvetic-ai-compass.ch and find more details on https://helvetic-ai-compass.ch/.",
+      "The form could not send your message right now. You can still contact contact@cezar-chirila.com and find more details on https://cezar-chirila.com/.",
       "error",
     );
   } finally {
